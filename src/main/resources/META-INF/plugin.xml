@@ -22,5 +22,10 @@
         <notificationGroup
                 id="Code Metrics Visualization Notifications"
                 displayType="BALLOON"/>
+
+        <toolWindow id="Code Metrics Visualizations"
+                    anchor="bottom"
+                    icon="/META-INF/pluginIcon.svg"
+                    factoryClass="com.lukastomoszek.idea.codemetricsvisualization.toolwindow.PanelToolWindowFactory"/>
     </extensions>
 </idea-plugin>
