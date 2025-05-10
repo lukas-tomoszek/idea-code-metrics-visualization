@@ -5,4 +5,19 @@
     <vendor>lukas-tomoszek</vendor>
 
     <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <projectConfigurable
+                parentId="tools"
+                instance="com.lukastomoszek.idea.codemetricsvisualization.config.ui.CodeMetricsVisualizationParentConfigurable"
+                id="com.lukastomoszek.idea.codemetricsvisualization.settings.parent"
+                displayName="Production Code Metrics Visualization"
+                nonDefaultProject="true"/>
+        <projectConfigurable
+                parentId="com.lukastomoszek.idea.codemetricsvisualization.settings.parent"
+                instance="com.lukastomoszek.idea.codemetricsvisualization.config.ui.DataSourceConfigurable"
+                id="com.lukastomoszek.ideacodemetricsvisualizationplugin.settings.datasources"
+                displayName="Data Sources"
+                nonDefaultProject="true"/>
+    </extensions>
 </idea-plugin>
