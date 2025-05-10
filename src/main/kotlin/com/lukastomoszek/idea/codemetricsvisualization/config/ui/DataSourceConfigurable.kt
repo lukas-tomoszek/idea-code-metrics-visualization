@@ -48,8 +48,20 @@ class DataSourceConfigurable(project: Project) :
 
     override fun createNewItem(): DataSourceConfig = DataSourceConfig()
 
-    override fun createEditDialog(item: DataSourceConfig): AbstractDialog<DataSourceConfig> =
-        DataSourceDialog(project, item)
+    override fun createEditDialog(item: DataSourceConfig): AbstractDialog<DataSourceConfig> {
+        val otherNames = items.filterNot { it === item }.map { it.name }
+        return DataSourceDialog(project, item.copy(), otherNames)
+    }
+
+    override fun addItem() {
+        val newItem = createNewItem()
+        val currentNames = items.map { it.name }
+        val dialog = DataSourceDialog(project, newItem, currentNames)
+        if (dialog.showAndGet()) {
+            items.add(dialog.getUpdatedConfig())
+            tableModel.fireTableDataChanged()
+        }
+    }
 
     override fun getItemsFromSettings(): List<DataSourceConfig> =
         DataSourceSettings.getInstance(project).state.dataSources

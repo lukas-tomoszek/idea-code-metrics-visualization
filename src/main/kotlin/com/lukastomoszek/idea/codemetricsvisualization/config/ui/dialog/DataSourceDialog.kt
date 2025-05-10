@@ -3,26 +3,32 @@ package com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
+import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.*
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.DataSourceConfig
+import com.lukastomoszek.idea.codemetricsvisualization.config.state.DefaultDataSource
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.ImportMode
 import javax.swing.JComponent
 
-class DataSourceDialog(private val project: Project, private val config: DataSourceConfig) :
-    AbstractDialog<DataSourceConfig>(project) {
+class DataSourceDialog(
+    private val project: Project,
+    private val config: DataSourceConfig,
+    private val existingDataSourceNames: List<String>
+) : AbstractDialog<DataSourceConfig>(project) {
 
     private lateinit var nameField: JBTextField
     private lateinit var tableNameField: JBTextField
     private lateinit var filePathField: TextFieldWithBrowseButton
     private lateinit var sqlTextArea: JBTextArea
     private var currentImportMode: ImportMode = config.importMode
+    private val originalName: String = config.name
 
     init {
         title =
-            if (config.name == "New Data Source") "Add Data Source Configuration" else "Edit Data Source Configuration"
+            if (config.name == DefaultDataSource.NAME) "Add Data Source Configuration" else "Edit Data Source Configuration"
         init()
     }
 
@@ -45,7 +51,7 @@ class DataSourceDialog(private val project: Project, private val config: DataSou
             row("Name:") {
                 nameField = textField()
                     .bindText(config::name)
-                    .validationOnInput { if (it.text.isBlank()) error("Name cannot be empty") else null }
+                    .validationOnInput { validateName(it.text) }
                     .align(AlignX.FILL)
                     .component
             }
@@ -93,6 +99,16 @@ class DataSourceDialog(private val project: Project, private val config: DataSou
                     .align(Align.FILL)
             }.resizableRow()
         }
+    }
+
+    private fun validateName(name: String): ValidationInfo? {
+        if (name.isBlank()) {
+            return ValidationInfo("Name cannot be empty", nameField)
+        }
+        if (name != originalName && existingDataSourceNames.any { it.equals(name, ignoreCase = true) }) {
+            return ValidationInfo("A Data Source with this name already exists.", nameField)
+        }
+        return null
     }
 
     override fun doOKAction() {
