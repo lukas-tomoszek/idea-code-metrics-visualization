@@ -1,15 +1,8 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
-    <id>com.github.lukastomoszek.ideacodemetricsvisualization</id>
-    <name>idea-code-metrics-visualization</name>
+    <id>com.lukastomoszek.idea.codemetricsvisualization</id>
+    <name>Production Code Metrics Visualization</name>
     <vendor>lukas-tomoszek</vendor>
 
     <depends>com.intellij.modules.platform</depends>
-
-    <resource-bundle>messages.MyBundle</resource-bundle>
-
-    <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.lukastomoszek.ideacodemetricsvisualization.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
-        <postStartupActivity implementation="com.github.lukastomoszek.ideacodemetricsvisualization.startup.MyProjectActivity" />
-    </extensions>
 </idea-plugin>
