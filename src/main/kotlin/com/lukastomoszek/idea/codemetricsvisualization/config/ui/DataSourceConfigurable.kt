@@ -9,6 +9,7 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.util.ui.ColumnInfo
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.DataSourceSettings
+import com.lukastomoszek.idea.codemetricsvisualization.config.service.DataSourceService
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.DataSourceConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.ImportMode
 import com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog.AbstractDialog
@@ -81,8 +82,10 @@ class DataSourceConfigurable(project: Project) :
             override fun actionPerformed(e: AnActionEvent) {
                 val selectedRow = table.selectedRow
                 if (selectedRow >= 0 && selectedRow < items.size) {
-                    items[selectedRow]
-                    // TODO: Import logic
+                    val itemToImport = items[selectedRow]
+                    DataSourceService.getInstance(project).executeImport(itemToImport) {
+                        tableModel.fireTableRowsUpdated(selectedRow, selectedRow)
+                    }
                 }
             }
 
@@ -109,7 +112,7 @@ class DataSourceConfigurable(project: Project) :
                         Messages.getWarningIcon()
                     )
                     if (confirmation == Messages.YES) {
-                        // TODO: Drop table logic
+                        DataSourceService.getInstance(project).dropTable(item.tableName)
                     }
                 }
             }
@@ -124,5 +127,28 @@ class DataSourceConfigurable(project: Project) :
 
         decorator.addExtraAction(importAction)
         decorator.addExtraAction(dropTableAction)
+    }
+
+    override fun removeItem() {
+        val selectedRow = table.selectedRow
+        if (selectedRow >= 0 && selectedRow < items.size) {
+            val itemToRemove = items[selectedRow]
+            val tableName = itemToRemove.tableName
+            val confirmation = Messages.showYesNoDialog(
+                project,
+                "Are you sure you want to delete the data source configuration '${itemToRemove.name}'?\nThis will also attempt to drop the associated table '$tableName' if the table name is not blank.",
+                "Delete Data Source Confirmation",
+                Messages.getWarningIcon()
+            )
+            if (confirmation == Messages.YES) {
+                if (tableName.isNotBlank()) {
+                    DataSourceService.getInstance(project).dropTable(tableName) {
+                        super.removeItem()
+                    }
+                } else {
+                    super.removeItem()
+                }
+            }
+        }
     }
 }
