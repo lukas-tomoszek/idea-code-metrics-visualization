@@ -27,6 +27,12 @@
                 nonDefaultProject="true"/>
         <projectConfigurable
                 parentId="com.lukastomoszek.idea.codemetricsvisualization.settings.parent"
+                instance="com.lukastomoszek.idea.codemetricsvisualization.config.ui.ChartConfigurable"
+                id="com.lukastomoszek.idea.codemetricsvisualization.settings.charts"
+                displayName="Charts"
+                nonDefaultProject="true"/>
+        <projectConfigurable
+                parentId="com.lukastomoszek.idea.codemetricsvisualization.settings.parent"
                 instance="com.lukastomoszek.idea.codemetricsvisualization.config.ui.FeatureEvaluatorConfigurable"
                 id="com.lukastomoszek.idea.codemetricsvisualization.settings.featureevaluators"
                 displayName="Feature Evaluators"
