@@ -1,4 +1,4 @@
-package com.lukastomoszek.idea.codemetricsvisualization.util
+package com.lukastomoszek.idea.codemetricsvisualization.context
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod

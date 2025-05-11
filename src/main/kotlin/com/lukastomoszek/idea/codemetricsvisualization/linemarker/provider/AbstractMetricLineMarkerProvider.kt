@@ -16,6 +16,7 @@ import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.ColorIcon
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.LineMarkerSettings
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerConfig
+import com.lukastomoszek.idea.codemetricsvisualization.context.PsiContextResolver
 import com.lukastomoszek.idea.codemetricsvisualization.db.ContextAwareQueryBuilder
 import com.lukastomoszek.idea.codemetricsvisualization.db.DuckDbService
 import com.lukastomoszek.idea.codemetricsvisualization.db.model.QueryResult
@@ -109,13 +110,14 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
         ProgressManager.checkCanceled()
         if (!originalElement.isValid || !anchorElement.isValid) return
 
+        val contextInfo = PsiContextResolver.getContextInfoFromPsi(originalElement)
+
         configs.forEach { config ->
             try {
                 ProgressManager.checkCanceled()
                 val builtQueryResult = ContextAwareQueryBuilder.buildQuery(
                     config.sqlTemplate,
-                    originalElement,
-                    useDefaultsForUnresolved = false
+                    contextInfo
                 )
 
                 builtQueryResult.fold(

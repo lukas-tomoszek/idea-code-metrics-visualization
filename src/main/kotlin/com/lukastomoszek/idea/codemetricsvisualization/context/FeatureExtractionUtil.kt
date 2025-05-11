@@ -1,4 +1,4 @@
-package com.lukastomoszek.idea.codemetricsvisualization.util
+package com.lukastomoszek.idea.codemetricsvisualization.context
 
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.psi.*

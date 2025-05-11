@@ -6,9 +6,9 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethodCallExpression
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.FeatureEvaluatorSettings
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerConfig
+import com.lukastomoszek.idea.codemetricsvisualization.context.FeatureExtractionUtil
+import com.lukastomoszek.idea.codemetricsvisualization.context.PsiUtils
 import com.lukastomoszek.idea.codemetricsvisualization.db.ContextAwareQueryBuilder
-import com.lukastomoszek.idea.codemetricsvisualization.util.FeatureExtractionUtil
-import com.lukastomoszek.idea.codemetricsvisualization.util.PsiUtils
 
 class FeatureEvaluationLineMarkerProvider :
     AbstractMetricLineMarkerProvider<PsiMethodCallExpression>(PsiMethodCallExpression::class.java) {
