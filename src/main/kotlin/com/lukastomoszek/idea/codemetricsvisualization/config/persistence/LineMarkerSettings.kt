@@ -4,6 +4,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.project.Project
+import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerSettingsState
 
 @Service(Service.Level.PROJECT)
@@ -14,6 +15,11 @@ import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerSe
 class LineMarkerSettings : AbstractSettingsStateComponent<LineMarkerSettingsState>() {
 
     override var internalState = LineMarkerSettingsState()
+
+    fun getEnabledLineMarkerConfigs(): List<LineMarkerConfig> =
+        internalState.lineMarkerConfigs.filter {
+            it.enabled && it.sqlTemplate.isNotBlank() && it.lineMarkerRules.isNotEmpty()
+        }
 
     companion object {
         fun getInstance(project: Project): LineMarkerSettings =

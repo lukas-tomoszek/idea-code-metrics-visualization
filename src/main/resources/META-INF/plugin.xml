@@ -4,6 +4,7 @@
     <vendor>lukas-tomoszek</vendor>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <projectConfigurable
@@ -24,6 +25,10 @@
                 id="com.lukastomoszek.idea.codemetricsvisualization.settings.linemarkers"
                 displayName="Line Markers"
                 nonDefaultProject="true"/>
+
+        <codeInsight.lineMarkerProvider
+                language="JAVA"
+                implementationClass="com.lukastomoszek.idea.codemetricsvisualization.linemarker.provider.MethodDefinitionLineMarkerProvider"/>
 
         <notificationGroup
                 id="Code Metrics Visualization Notifications"
