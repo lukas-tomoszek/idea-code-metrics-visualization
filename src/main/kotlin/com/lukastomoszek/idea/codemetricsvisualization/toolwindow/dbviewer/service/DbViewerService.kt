@@ -18,8 +18,8 @@ class DbViewerService(
         cs.launch {
             val result = withBackgroundProgress(project, "Fetching Table Names", false) {
                 DuckDbService.getInstance(project).executeReadQuery("SHOW TABLES;")
-                    .mapCatching { result ->
-                        result.rows.mapNotNull { it["name"] as? String }.sorted()
+                    .mapCatching { queryResult ->
+                        queryResult.rows.mapNotNull { it["name"] as? String }.sorted()
                     }
             }
             callback(result)
@@ -41,6 +41,19 @@ class DbViewerService(
         cs.launch {
             val result = withBackgroundProgress(project, "Loading Data for DB Viewer", false) {
                 DuckDbService.getInstance(project).executeReadQuery(sqlQuery)
+            }
+            callback(result)
+        }
+    }
+
+    fun getTableRowCount(tableName: String, callback: (Result<Long?>) -> Unit) {
+        cs.launch {
+            val result = withBackgroundProgress(project, "Fetching Row Count for '$tableName'", false) {
+                val countQuery = "SELECT COUNT(*) FROM \"$tableName\";"
+                DuckDbService.getInstance(project).executeReadQuery(countQuery)
+                    .mapCatching { queryResult ->
+                        queryResult.rows.firstOrNull()?.values?.firstOrNull() as? Long
+                    }
             }
             callback(result)
         }

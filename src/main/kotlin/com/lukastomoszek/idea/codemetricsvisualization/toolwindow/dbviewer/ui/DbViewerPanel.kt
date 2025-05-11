@@ -187,13 +187,24 @@ class DbViewerPanel(private val project: Project) : SimpleToolWindowPanel(true, 
         statusLabel.text = "Executing query for table '${selectedTable ?: "selected source"}'..."
         tableModel.clearData()
 
-        DbViewerService.getInstance(project).queryTableData(sqlQuery) { result ->
-            handleQueryResponse(result, sqlQuery, selectedTable)
+        DbViewerService.getInstance(project).queryTableData(sqlQuery) { queryDataResult ->
+            if (selectedTable != null) {
+                DbViewerService.getInstance(project).getTableRowCount(selectedTable) { countResult ->
+                    handleQueryResponse(queryDataResult, countResult.getOrNull(), sqlQuery, selectedTable)
+                }
+            } else {
+                handleQueryResponse(queryDataResult, null, sqlQuery, selectedTable)
+            }
         }
     }
 
-    private fun handleQueryResponse(result: Result<QueryResult>, sqlQuery: String, tableName: String?) {
-        result.fold(
+    private fun handleQueryResponse(
+        queryDataResult: Result<QueryResult>,
+        totalCount: Long?,
+        sqlQuery: String,
+        tableName: String?
+    ) {
+        queryDataResult.fold(
             onSuccess = { queryResult ->
                 val rows = queryResult.rows.map { row ->
                     queryResult.columnNames.map { row[it] }.toTypedArray()
@@ -203,7 +214,7 @@ class DbViewerPanel(private val project: Project) : SimpleToolWindowPanel(true, 
                     queryResult.columnTypes.toTypedArray(),
                     rows
                 )
-                updateStatusLabelFromResult(queryResult, tableName)
+                updateStatusLabelFromResult(queryResult, tableName, totalCount)
             },
             onFailure = { error ->
                 val context = tableName?.let { "for table '$it'" } ?: ""
@@ -217,9 +228,14 @@ class DbViewerPanel(private val project: Project) : SimpleToolWindowPanel(true, 
         )
     }
 
-    private fun updateStatusLabelFromResult(queryResult: QueryResult, tableName: String?) {
+    private fun updateStatusLabelFromResult(queryResult: QueryResult, tableName: String?, totalCount: Long?) {
+        val displayedRows = queryResult.rows.size
         val context = tableName?.let { "Table '$it'" } ?: "Query result"
-        statusLabel.text = "$context: Displaying ${queryResult.rows.size} row(s)."
+        statusLabel.text = if (totalCount != null) {
+            "$context: Displaying $displayedRows out of $totalCount row(s)."
+        } else {
+            "$context: Displaying $displayedRows row(s)."
+        }
     }
 
     companion object {
