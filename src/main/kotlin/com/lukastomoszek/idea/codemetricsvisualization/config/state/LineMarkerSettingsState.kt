@@ -6,9 +6,9 @@ internal object DefaultLineMarkerConfig {
     const val NAME = "New Line Marker Config"
     const val SQL_TEMPLATE = "SELECT COUNT(*) FROM log_entries WHERE method_name = '#method_name#'"
     val RULES = mutableListOf(
-        LineMarkerRule(">", 50.0f, "#FF0000"),
-        LineMarkerRule(">", 10.0f, "#FFFF00"),
-        LineMarkerRule(">", 0.0f, "#00FF00")
+        LineMarkerRule(LineMarkerOperator.GREATER_THAN, 50.0f, "#FF0000"),
+        LineMarkerRule(LineMarkerOperator.GREATER_THAN, 10.0f, "#FFFF00"),
+        LineMarkerRule(LineMarkerOperator.GREATER_THAN, 0.0f, "#00FF00")
     )
     const val ENABLED = true
 }

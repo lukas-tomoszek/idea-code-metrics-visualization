@@ -1,6 +1,7 @@
 package com.lukastomoszek.idea.codemetricsvisualization.linemarker.rule
 
 import com.intellij.openapi.diagnostic.thisLogger
+import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerOperator
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerRule
 import java.awt.Color
 
@@ -15,16 +16,12 @@ object RuleEvaluator {
             try {
                 val threshold = rule.threshold
                 val match = when (rule.operator) {
-                    ">" -> value > threshold
-                    "<" -> value < threshold
-                    "==" -> value == threshold
-                    ">=" -> value >= threshold
-                    "<=" -> value <= threshold
-                    "!=" -> value != threshold
-                    else -> {
-                        thisLogger().warn("Unsupported operator in rule: ${rule.operator}")
-                        false
-                    }
+                    LineMarkerOperator.GREATER_THAN -> value > threshold
+                    LineMarkerOperator.LESS_THAN -> value < threshold
+                    LineMarkerOperator.EQUALS -> value == threshold
+                    LineMarkerOperator.GREATER_THAN_OR_EQUAL -> value >= threshold
+                    LineMarkerOperator.LESS_THAN_OR_EQUAL -> value <= threshold
+                    LineMarkerOperator.NOT_EQUALS -> value != threshold
                 }
 
                 if (match) {

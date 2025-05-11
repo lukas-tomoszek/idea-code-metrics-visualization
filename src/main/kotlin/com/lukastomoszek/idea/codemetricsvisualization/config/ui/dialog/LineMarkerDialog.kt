@@ -1,6 +1,8 @@
 package com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog
 
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.ComboBox
+import com.intellij.ui.EnumComboBoxModel
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
@@ -13,7 +15,9 @@ import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.DefaultLineMarkerConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerConfig
+import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerOperator
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerRule
+import javax.swing.DefaultCellEditor
 import javax.swing.JComponent
 
 class LineMarkerDialog(project: Project, private val config: LineMarkerConfig) :
@@ -36,15 +40,18 @@ class LineMarkerDialog(project: Project, private val config: LineMarkerConfig) :
             wrapStyleWord = true
         }
 
-        val validOperators = arrayOf(">", "<", "==", ">=", "<=", "!=")
-
-        val operatorColumn = object : ColumnInfo<LineMarkerRule, String>("Operator") {
-            override fun valueOf(item: LineMarkerRule): String = item.operator
-            override fun setValue(item: LineMarkerRule, value: String) {
-                if (value in validOperators) item.operator = value
+        val operatorColumn = object : ColumnInfo<LineMarkerRule, LineMarkerOperator>("Operator") {
+            override fun valueOf(item: LineMarkerRule): LineMarkerOperator = item.operator
+            override fun setValue(item: LineMarkerRule, value: LineMarkerOperator) {
+                item.operator = value
             }
 
             override fun isCellEditable(item: LineMarkerRule) = true
+
+            override fun getEditor(item: LineMarkerRule): DefaultCellEditor {
+                val comboBox = ComboBox(EnumComboBoxModel(LineMarkerOperator::class.java))
+                return DefaultCellEditor(comboBox)
+            }
         }
 
         val thresholdColumn = object : ColumnInfo<LineMarkerRule, String>("Threshold (Float)") {
@@ -77,6 +84,10 @@ class LineMarkerDialog(project: Project, private val config: LineMarkerConfig) :
         val rulesTable = JBTable(rulesTableModel).apply {
             setShowGrid(true)
             emptyText.text = "No rules defined"
+
+            val opColumnModel = getColumnModel().getColumn(0)
+            opColumnModel.cellEditor = operatorColumn.getEditor(LineMarkerRule())
+            opColumnModel.cellRenderer = operatorColumn.getRenderer(LineMarkerRule())
         }
 
         val rulesToolbar = ToolbarDecorator.createDecorator(rulesTable)
