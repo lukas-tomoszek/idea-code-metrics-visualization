@@ -95,6 +95,7 @@ class DuckDbService(private val project: Project) {
                     }
                 }
                 thisLogger().info("Successfully executed write SQL.")
+                QueryCacheService.getInstance(project).clear()
             }.onFailure { e ->
                 val errorMessage = when (e) {
                     is SQLException -> "SQL Error executing write query '$sql': ${e.message}"
@@ -109,6 +110,10 @@ class DuckDbService(private val project: Project) {
         if (sql.isBlank()) {
             thisLogger().warn("Read SQL command is blank, skipping execution.")
             return Result.failure(IllegalArgumentException("Read SQL command cannot be blank."))
+        }
+
+        QueryCacheService.getInstance(project).get(sql)?.let {
+            return it
         }
 
         if (isWriting.get()) {
@@ -139,6 +144,8 @@ class DuckDbService(private val project: Project) {
                     }
                 }
             }
+        }.onSuccess { queryResult ->
+            QueryCacheService.getInstance(project).put(sql, Result.success(queryResult))
         }.onFailure { e ->
             val errorMessage = when (e) {
                 is SQLException -> "Database Read Error for query '$sql': ${e.message}"
