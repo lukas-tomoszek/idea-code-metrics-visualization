@@ -5,21 +5,17 @@ import com.intellij.util.ui.ColumnInfo
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.FeatureEvaluatorSettings
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.FeatureEvaluatorConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.FeatureParameterType
-import com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog.AbstractDialog
+import com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog.AbstractNamedDialog
 import com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog.FeatureEvaluatorDialog
 
 class FeatureEvaluatorConfigurable(project: Project) :
-    AbstractListConfigurable<FeatureEvaluatorConfig>(
+    AbstractListNamedConfigurable<FeatureEvaluatorConfig>(
         project,
         "Feature Evaluators",
         "FeatureEvaluators",
         noItemsText = "No Feature Evaluators configured",
         commentText = "Define how feature evaluation methods look in your code to enable feature-specific queries in line markers."
     ) {
-
-    private val nameColumn = object : ColumnInfo<FeatureEvaluatorConfig, String>("Name") {
-        override fun valueOf(item: FeatureEvaluatorConfig): String = item.name
-    }
 
     private val fqnColumn = object : ColumnInfo<FeatureEvaluatorConfig, String>("Method FQN") {
         override fun valueOf(item: FeatureEvaluatorConfig): String = item.evaluatorMethodFqn
@@ -38,7 +34,7 @@ class FeatureEvaluatorConfigurable(project: Project) :
 
     override fun createNewItem(): FeatureEvaluatorConfig = FeatureEvaluatorConfig()
 
-    override fun createEditDialog(item: FeatureEvaluatorConfig): AbstractDialog<FeatureEvaluatorConfig> {
+    override fun createEditDialog(item: FeatureEvaluatorConfig): AbstractNamedDialog<FeatureEvaluatorConfig> {
         val otherNames = items.filterNot { it === item }.map { it.name }
         return FeatureEvaluatorDialog(project, item.copy(), otherNames)
     }
@@ -54,7 +50,7 @@ class FeatureEvaluatorConfigurable(project: Project) :
     }
 
     override fun getItemsFromSettings(): List<FeatureEvaluatorConfig> =
-        FeatureEvaluatorSettings.getInstance(project).state.featureEvaluators
+        FeatureEvaluatorSettings.getInstance(project).state.configs
 
     override fun saveItemsToSettings(items: List<FeatureEvaluatorConfig>) {
         FeatureEvaluatorSettings.getInstance(project).update(items)

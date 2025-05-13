@@ -53,7 +53,7 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
 
         val project = elements.first().project
         val lineMarkerSettings = LineMarkerSettings.getInstance(project)
-        val allEnabledConfigs = lineMarkerSettings.getEnabledLineMarkerConfigs()
+        val allEnabledConfigs = lineMarkerSettings.getEnabledNonEmptyConfigs()
         val relevantConfigs = filterEnabledConfigs(allEnabledConfigs)
 
         if (relevantConfigs.isEmpty()) {

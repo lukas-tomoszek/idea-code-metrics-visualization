@@ -13,10 +13,10 @@ object DefaultChartConfig {
 
 data class ChartSettingsState(
     @XCollection
-    val charts: List<ChartConfig> = listOf()
+    val configs: List<ChartConfig> = listOf()
 )
 
 data class ChartConfig(
-    var name: String = DefaultChartConfig.NAME,
+    override var name: String = DefaultChartConfig.NAME,
     var sql: String = DefaultChartConfig.SQL
-)
+) : NamedConfig

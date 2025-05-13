@@ -15,14 +15,14 @@ internal object DefaultLineMarkerConfig {
 
 data class LineMarkerSettingsState(
     @XCollection
-    val lineMarkerConfigs: List<LineMarkerConfig> = listOf()
+    val configs: List<LineMarkerConfig> = listOf()
 )
 
 data class LineMarkerConfig(
     var enabled: Boolean = DefaultLineMarkerConfig.ENABLED,
-    var name: String = DefaultLineMarkerConfig.NAME,
+    override var name: String = DefaultLineMarkerConfig.NAME,
     var sqlTemplate: String = DefaultLineMarkerConfig.SQL_TEMPLATE,
 
     @XCollection
     var lineMarkerRules: MutableList<LineMarkerRule> = DefaultLineMarkerConfig.RULES.map { it.copy() }.toMutableList()
-)
+) : NamedConfig

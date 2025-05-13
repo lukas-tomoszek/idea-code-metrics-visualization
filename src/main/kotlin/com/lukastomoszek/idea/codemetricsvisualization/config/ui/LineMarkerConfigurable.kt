@@ -6,14 +6,13 @@ import com.intellij.ui.BooleanTableCellRenderer
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.ColumnInfo
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.LineMarkerSettings
-import com.lukastomoszek.idea.codemetricsvisualization.config.state.DefaultLineMarkerConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerConfig
-import com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog.AbstractDialog
+import com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog.AbstractNamedDialog
 import com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog.LineMarkerDialog
 import javax.swing.table.TableCellRenderer
 
 class LineMarkerConfigurable(project: Project) :
-    AbstractListConfigurable<LineMarkerConfig>(
+    AbstractListNamedConfigurable<LineMarkerConfig>(
         project,
         "Line Markers",
         "Metric Visualization",
@@ -39,10 +38,6 @@ class LineMarkerConfigurable(project: Project) :
         }
     }
 
-    private val nameColumn = object : ColumnInfo<LineMarkerConfig, String>("Name") {
-        override fun valueOf(item: LineMarkerConfig): String = item.name
-    }
-
     private val sqlTemplateColumn = object : ColumnInfo<LineMarkerConfig, String>("SQL Template") {
         override fun valueOf(item: LineMarkerConfig): String = item.sqlTemplate
             .replace(Regex("\\s+"), " ")
@@ -66,13 +61,15 @@ class LineMarkerConfigurable(project: Project) :
         enabledCol.maxWidth = preferredWidth
     }
 
-    override fun createNewItem(): LineMarkerConfig = LineMarkerConfig(name = DefaultLineMarkerConfig.NAME)
+    override fun createNewItem(): LineMarkerConfig = LineMarkerConfig()
 
-    override fun createEditDialog(item: LineMarkerConfig): AbstractDialog<LineMarkerConfig> =
-        LineMarkerDialog(project, item)
+    override fun createEditDialog(item: LineMarkerConfig): AbstractNamedDialog<LineMarkerConfig> {
+        val otherNames = items.filterNot { it === item }.map { it.name }
+        return LineMarkerDialog(project, item.copy(), otherNames)
+    }
 
     override fun getItemsFromSettings(): List<LineMarkerConfig> =
-        LineMarkerSettings.getInstance(project).state.lineMarkerConfigs
+        LineMarkerSettings.getInstance(project).state.configs
 
     override fun saveItemsToSettings(items: List<LineMarkerConfig>) {
         LineMarkerSettings.getInstance(project).update(items)

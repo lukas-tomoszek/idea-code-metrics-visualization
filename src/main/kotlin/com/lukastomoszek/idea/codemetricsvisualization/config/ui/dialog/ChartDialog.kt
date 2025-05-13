@@ -13,13 +13,11 @@ import javax.swing.JComponent
 
 class ChartDialog(
     project: Project,
-    private val config: ChartConfig,
-    private val existingChartNames: List<String>
-) : AbstractDialog<ChartConfig>(project) {
+    config: ChartConfig,
+    existingChartNames: List<String>
+) : AbstractNamedDialog<ChartConfig>(project, config, existingChartNames) {
 
-    private lateinit var nameField: com.intellij.ui.components.JBTextField
     private lateinit var sqlTextArea: JBTextArea
-    private val originalName = config.name
 
     init {
         title = if (config.name == DefaultChartConfig.NAME) "Add Chart Configuration" else "Edit Chart Configuration"
@@ -37,22 +35,13 @@ class ChartDialog(
             row("Name:") {
                 nameField = textField()
                     .bindText(config::name)
-                    .validationOnInput {
-                        if (it.text.isBlank()) error("Name cannot be empty")
-                        else if (it.text != originalName && existingChartNames.any { name ->
-                                name.equals(
-                                    it.text,
-                                    ignoreCase = true
-                                )
-                            }) error("A chart with this name already exists")
-                        else null
-                    }
+                    .validationOnInput { validateName(it.text) }
                     .align(AlignX.FILL)
                     .component
             }
 
             row {
-                label("SQL Query:")
+                label("SQL query:")
             }
             row {
                 cell(JBScrollPane(sqlTextArea))
@@ -65,6 +54,4 @@ class ChartDialog(
         config.sql = sqlTextArea.text
         super.doOKAction()
     }
-
-    override fun getUpdatedConfig(): ChartConfig = config
 }

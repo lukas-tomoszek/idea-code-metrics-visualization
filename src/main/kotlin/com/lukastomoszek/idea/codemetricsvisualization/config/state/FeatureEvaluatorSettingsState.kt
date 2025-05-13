@@ -11,7 +11,7 @@ internal object DefaultFeatureEvaluatorConfig {
 
 data class FeatureEvaluatorSettingsState(
     @XCollection
-    val featureEvaluators: List<FeatureEvaluatorConfig> = listOf()
+    val configs: List<FeatureEvaluatorConfig> = listOf()
 )
 
 enum class FeatureParameterType {
@@ -19,8 +19,8 @@ enum class FeatureParameterType {
 }
 
 data class FeatureEvaluatorConfig(
-    var name: String = DefaultFeatureEvaluatorConfig.NAME,
+    override var name: String = DefaultFeatureEvaluatorConfig.NAME,
     var evaluatorMethodFqn: String = DefaultFeatureEvaluatorConfig.EVALUATOR_METHOD_FQN,
     var featureParameterIndex: Int = DefaultFeatureEvaluatorConfig.FEATURE_PARAMETER_INDEX,
     var featureParameterType: FeatureParameterType = DefaultFeatureEvaluatorConfig.FEATURE_PARAMETER_TYPE
-)
+) : NamedConfig

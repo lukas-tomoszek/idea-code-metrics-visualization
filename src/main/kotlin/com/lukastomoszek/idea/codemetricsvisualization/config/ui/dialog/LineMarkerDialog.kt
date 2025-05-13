@@ -20,8 +20,8 @@ import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerRu
 import javax.swing.DefaultCellEditor
 import javax.swing.JComponent
 
-class LineMarkerDialog(project: Project, private val config: LineMarkerConfig) :
-    AbstractDialog<LineMarkerConfig>(project) {
+class LineMarkerDialog(project: Project, config: LineMarkerConfig, existingLineMarkerNames: List<String>) :
+    AbstractNamedDialog<LineMarkerConfig>(project, config, existingLineMarkerNames) {
 
     private lateinit var sqlTextArea: JBTextArea
     private lateinit var rulesTableModel: ListTableModel<LineMarkerRule>
@@ -99,7 +99,7 @@ class LineMarkerDialog(project: Project, private val config: LineMarkerConfig) :
             row("Name:") {
                 textField()
                     .bindText(config::name)
-                    .validationOnInput { if (it.text.isBlank()) error("Name cannot be empty") else null }
+                    .validationOnInput { validateName(it.text) }
                     .align(AlignX.FILL)
             }
 
@@ -138,6 +138,4 @@ class LineMarkerDialog(project: Project, private val config: LineMarkerConfig) :
         config.lineMarkerRules = rules
         super.doOKAction()
     }
-
-    override fun getUpdatedConfig(): LineMarkerConfig = config
 }

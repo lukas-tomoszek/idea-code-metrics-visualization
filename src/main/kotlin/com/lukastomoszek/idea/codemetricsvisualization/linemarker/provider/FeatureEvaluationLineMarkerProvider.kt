@@ -22,7 +22,7 @@ class FeatureEvaluationLineMarkerProvider :
     override suspend fun preFilterElement(element: PsiMethodCallExpression, project: Project): Boolean {
         val featureEvaluatorSettings = FeatureEvaluatorSettings.getInstance(project)
         val configuredEvaluatorFqns =
-            featureEvaluatorSettings.state.featureEvaluators.map { it.evaluatorMethodFqn }.toSet()
+            featureEvaluatorSettings.state.configs.map { it.evaluatorMethodFqn }.toSet()
 
         if (configuredEvaluatorFqns.isEmpty()) false
         val resolvedMethod = readAction {

@@ -12,21 +12,17 @@ import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.DataSo
 import com.lukastomoszek.idea.codemetricsvisualization.config.service.DataSourceService
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.DataSourceConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.ImportMode
-import com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog.AbstractDialog
+import com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog.AbstractNamedDialog
 import com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog.DataSourceDialog
 
 class DataSourceConfigurable(project: Project) :
-    AbstractListConfigurable<DataSourceConfig>(
+    AbstractListNamedConfigurable<DataSourceConfig>(
         project,
         "Data Source",
         "DataSource",
         noItemsText = "No Data Sources configured",
         commentText = "Define named SQL configurations to import data into the project's DuckDB database."
     ) {
-
-    private val nameColumn = object : ColumnInfo<DataSourceConfig, String>("Name") {
-        override fun valueOf(item: DataSourceConfig): String = item.name
-    }
 
     private val tableColumn = object : ColumnInfo<DataSourceConfig, String>("Table Name") {
         override fun valueOf(item: DataSourceConfig): String = item.tableName
@@ -49,7 +45,7 @@ class DataSourceConfigurable(project: Project) :
 
     override fun createNewItem(): DataSourceConfig = DataSourceConfig()
 
-    override fun createEditDialog(item: DataSourceConfig): AbstractDialog<DataSourceConfig> {
+    override fun createEditDialog(item: DataSourceConfig): AbstractNamedDialog<DataSourceConfig> {
         val otherNames = items.filterNot { it === item }.map { it.name }
         return DataSourceDialog(project, item.copy(), otherNames)
     }
@@ -65,7 +61,7 @@ class DataSourceConfigurable(project: Project) :
     }
 
     override fun getItemsFromSettings(): List<DataSourceConfig> =
-        DataSourceSettings.getInstance(project).state.dataSources
+        DataSourceSettings.getInstance(project).state.configs
 
     override fun saveItemsToSettings(items: List<DataSourceConfig>) {
         DataSourceSettings.getInstance(project).update(items)

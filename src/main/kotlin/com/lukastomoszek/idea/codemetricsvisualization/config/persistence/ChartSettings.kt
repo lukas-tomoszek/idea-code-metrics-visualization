@@ -16,7 +16,7 @@ import com.lukastomoszek.idea.codemetricsvisualization.config.state.ChartSetting
 class ChartSettings : SerializablePersistentStateComponent<ChartSettingsState>(ChartSettingsState()) {
 
     fun update(newConfigs: List<ChartConfig>) {
-        updateState { it.copy(charts = newConfigs) }
+        updateState { it.copy(configs = newConfigs) }
     }
 
     companion object {

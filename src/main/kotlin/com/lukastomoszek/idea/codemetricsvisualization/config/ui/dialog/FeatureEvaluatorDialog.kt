@@ -3,6 +3,7 @@ package com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.JBIntSpinner
+import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.*
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.DefaultFeatureEvaluatorConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.FeatureEvaluatorConfig
@@ -11,15 +12,13 @@ import javax.swing.JComponent
 
 class FeatureEvaluatorDialog(
     project: Project,
-    private val config: FeatureEvaluatorConfig,
-    private val existingConfigNames: List<String>
-) : AbstractDialog<FeatureEvaluatorConfig>(project) {
+    config: FeatureEvaluatorConfig,
+    existingFeatureEvaluatorNames: List<String>
+) : AbstractNamedDialog<FeatureEvaluatorConfig>(project, config, existingFeatureEvaluatorNames) {
 
-    private lateinit var nameField: com.intellij.ui.components.JBTextField
-    private lateinit var fqnField: com.intellij.ui.components.JBTextField
+    private lateinit var fqnField: JBTextField
     private lateinit var indexSpinner: JBIntSpinner
     private var currentFeatureParameterType: FeatureParameterType = config.featureParameterType
-    private val originalName = config.name
 
     init {
         title =
@@ -73,16 +72,6 @@ class FeatureEvaluatorDialog(
         }
     }
 
-    private fun validateName(name: String): ValidationInfo? {
-        if (name.isBlank()) {
-            return ValidationInfo("Name cannot be empty", nameField)
-        }
-        if (name != originalName && existingConfigNames.any { it.equals(name, ignoreCase = true) }) {
-            return ValidationInfo("A Feature Evaluator with this name already exists.", nameField)
-        }
-        return null
-    }
-
     private fun validateFqn(fqn: String): ValidationInfo? {
         if (fqn.isBlank()) {
             return ValidationInfo("Method FQN cannot be empty", fqnField)
@@ -100,6 +89,4 @@ class FeatureEvaluatorDialog(
         config.featureParameterType = currentFeatureParameterType
         super.doOKAction()
     }
-
-    override fun getUpdatedConfig(): FeatureEvaluatorConfig = config
 }

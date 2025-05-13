@@ -10,11 +10,12 @@ import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
-import com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog.AbstractDialog
+import com.lukastomoszek.idea.codemetricsvisualization.config.state.NamedConfig
+import com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog.AbstractNamedDialog
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 
-abstract class AbstractListConfigurable<ConfigType : Any>(
+abstract class AbstractListNamedConfigurable<ConfigType : NamedConfig>(
     protected val project: Project,
     displayName: String,
     helpTopic: String,
@@ -28,7 +29,7 @@ abstract class AbstractListConfigurable<ConfigType : Any>(
 
     protected abstract fun getColumnInfos(): Array<ColumnInfo<ConfigType, *>>
     protected abstract fun createNewItem(): ConfigType
-    protected abstract fun createEditDialog(item: ConfigType): AbstractDialog<ConfigType>
+    protected abstract fun createEditDialog(item: ConfigType): AbstractNamedDialog<ConfigType>
     protected abstract fun getItemsFromSettings(): List<ConfigType>
     protected abstract fun saveItemsToSettings(items: List<ConfigType>)
     protected abstract fun copyItem(item: ConfigType): ConfigType
@@ -69,6 +70,10 @@ abstract class AbstractListConfigurable<ConfigType : Any>(
                 }
             }
         }
+    }
+
+    protected val nameColumn = object : ColumnInfo<ConfigType, String>("Name") {
+        override fun valueOf(item: ConfigType): String = item.name
     }
 
     protected open fun updateTable(table: JBTable) {}

@@ -16,11 +16,11 @@ import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerSe
 class LineMarkerSettings : SerializablePersistentStateComponent<LineMarkerSettingsState>(LineMarkerSettingsState()) {
 
     fun update(newConfigs: List<LineMarkerConfig>) {
-        updateState { it.copy(lineMarkerConfigs = newConfigs) }
+        updateState { it.copy(configs = newConfigs) }
     }
 
-    fun getEnabledLineMarkerConfigs(): List<LineMarkerConfig> =
-        state.lineMarkerConfigs.filter {
+    fun getEnabledNonEmptyConfigs(): List<LineMarkerConfig> =
+        state.configs.filter {
             it.enabled && it.sqlTemplate.isNotBlank() && it.lineMarkerRules.isNotEmpty()
         }
 

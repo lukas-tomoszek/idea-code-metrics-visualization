@@ -24,18 +24,18 @@ enum class ImportMode {
 
 data class DataSourceSettingsState(
     @XCollection
-    val dataSources: List<DataSourceConfig> = listOf()
+    val configs: List<DataSourceConfig> = listOf()
 )
 
 data class DataSourceConfig(
-    var name: String = DefaultDataSource.NAME,
+    override var name: String = DefaultDataSource.NAME,
     var tableName: String = DefaultDataSource.TABLE_NAME,
     var filePath: String = DefaultDataSource.FILE_PATH,
     var importMode: ImportMode = DefaultDataSource.IMPORT_MODE,
     @OptionTag(converter = LocalDateTimeConverter::class)
     var lastImportedAt: LocalDateTime? = null,
     var sql: String = DefaultDataSource.SQL
-) {
+) : NamedConfig {
     fun getFormattedLastImportedAt(): String =
         lastImportedAt?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) ?: "Never"
 

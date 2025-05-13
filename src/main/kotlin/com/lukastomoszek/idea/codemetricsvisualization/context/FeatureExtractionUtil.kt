@@ -25,7 +25,7 @@ object FeatureExtractionUtil {
 
         val project = callExpression.project
         val calleeFqn = PsiUtils.getContainingMethodFqn(resolvedMethod)
-        val matchingEvaluator = FeatureEvaluatorSettings.getInstance(project).state.featureEvaluators.find {
+        val matchingEvaluator = FeatureEvaluatorSettings.getInstance(project).state.configs.find {
             it.evaluatorMethodFqn == calleeFqn
         }
 

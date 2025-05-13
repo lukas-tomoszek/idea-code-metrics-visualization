@@ -16,7 +16,7 @@ import com.lukastomoszek.idea.codemetricsvisualization.config.state.DataSourceSe
 class DataSourceSettings : SerializablePersistentStateComponent<DataSourceSettingsState>(DataSourceSettingsState()) {
 
     fun update(newConfigs: List<DataSourceConfig>) {
-        updateState { it.copy(dataSources = newConfigs) }
+        updateState { it.copy(configs = newConfigs) }
     }
 
     companion object {

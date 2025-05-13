@@ -17,7 +17,7 @@ class FeatureEvaluatorSettings :
     SerializablePersistentStateComponent<FeatureEvaluatorSettingsState>(FeatureEvaluatorSettingsState()) {
 
     fun update(newConfigs: List<FeatureEvaluatorConfig>) {
-        updateState { it.copy(featureEvaluators = newConfigs) }
+        updateState { it.copy(configs = newConfigs) }
     }
 
     companion object {

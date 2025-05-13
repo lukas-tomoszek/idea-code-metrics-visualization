@@ -3,7 +3,6 @@ package com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
-import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
@@ -15,16 +14,14 @@ import javax.swing.JComponent
 
 class DataSourceDialog(
     private val project: Project,
-    private val config: DataSourceConfig,
-    private val existingDataSourceNames: List<String>
-) : AbstractDialog<DataSourceConfig>(project) {
+    config: DataSourceConfig,
+    existingDataSourceNames: List<String>
+) : AbstractNamedDialog<DataSourceConfig>(project, config, existingDataSourceNames) {
 
-    private lateinit var nameField: JBTextField
     private lateinit var tableNameField: JBTextField
     private lateinit var filePathField: TextFieldWithBrowseButton
     private lateinit var sqlTextArea: JBTextArea
     private var currentImportMode: ImportMode = config.importMode
-    private val originalName: String = config.name
 
     init {
         title =
@@ -101,24 +98,11 @@ class DataSourceDialog(
         }
     }
 
-    private fun validateName(name: String): ValidationInfo? {
-        if (name.isBlank()) {
-            return ValidationInfo("Name cannot be empty", nameField)
-        }
-        if (name != originalName && existingDataSourceNames.any { it.equals(name, ignoreCase = true) }) {
-            return ValidationInfo("A Data Source with this name already exists.", nameField)
-        }
-        return null
-    }
-
     override fun doOKAction() {
-        config.name = nameField.text
         config.tableName = tableNameField.text
         config.filePath = filePathField.text
         config.importMode = currentImportMode
         config.sql = sqlTextArea.text
         super.doOKAction()
     }
-
-    override fun getUpdatedConfig(): DataSourceConfig = config
 }

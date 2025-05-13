@@ -4,22 +4,17 @@ import com.intellij.openapi.project.Project
 import com.intellij.util.ui.ColumnInfo
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.ChartSettings
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.ChartConfig
-import com.lukastomoszek.idea.codemetricsvisualization.config.state.DefaultChartConfig
-import com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog.AbstractDialog
+import com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog.AbstractNamedDialog
 import com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog.ChartDialog
 
 class ChartConfigurable(project: Project) :
-    AbstractListConfigurable<ChartConfig>(
+    AbstractListNamedConfigurable<ChartConfig>(
         project,
         "Charts",
         "Charts",
         noItemsText = "No Chart configurations defined",
         commentText = "Define named SQL queries for generating charts in the tool window."
     ) {
-
-    private val nameColumn = object : ColumnInfo<ChartConfig, String>("Name") {
-        override fun valueOf(item: ChartConfig): String = item.name
-    }
 
     private val sqlColumn = object : ColumnInfo<ChartConfig, String>("SQL Template") {
         override fun valueOf(item: ChartConfig): String = item.sql
@@ -28,11 +23,11 @@ class ChartConfigurable(project: Project) :
 
     override fun getColumnInfos(): Array<ColumnInfo<ChartConfig, *>> = arrayOf(nameColumn, sqlColumn)
 
-    override fun createNewItem(): ChartConfig = ChartConfig(name = DefaultChartConfig.NAME)
+    override fun createNewItem(): ChartConfig = ChartConfig()
 
-    override fun createEditDialog(item: ChartConfig): AbstractDialog<ChartConfig> {
+    override fun createEditDialog(item: ChartConfig): AbstractNamedDialog<ChartConfig> {
         val otherNames = items.filterNot { it === item }.map { it.name }
-        return ChartDialog(project, item, otherNames)
+        return ChartDialog(project, item.copy(), otherNames)
     }
 
     override fun addItem() {
@@ -45,7 +40,7 @@ class ChartConfigurable(project: Project) :
         }
     }
 
-    override fun getItemsFromSettings(): List<ChartConfig> = ChartSettings.getInstance(project).state.charts
+    override fun getItemsFromSettings(): List<ChartConfig> = ChartSettings.getInstance(project).state.configs
 
     override fun saveItemsToSettings(items: List<ChartConfig>) {
         ChartSettings.getInstance(project).update(items)
