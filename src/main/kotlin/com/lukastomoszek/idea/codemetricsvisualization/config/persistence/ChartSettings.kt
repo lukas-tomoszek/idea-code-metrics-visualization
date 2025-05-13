@@ -1,9 +1,11 @@
 package com.lukastomoszek.idea.codemetricsvisualization.config.persistence
 
+import com.intellij.openapi.components.SerializablePersistentStateComponent
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.project.Project
+import com.lukastomoszek.idea.codemetricsvisualization.config.state.ChartConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.ChartSettingsState
 
 @Service(Service.Level.PROJECT)
@@ -11,9 +13,11 @@ import com.lukastomoszek.idea.codemetricsvisualization.config.state.ChartSetting
     name = "ChartSettings",
     storages = [Storage("codeMetricsVisualizations/chartSettings.xml")]
 )
-class ChartSettings : AbstractSettingsStateComponent<ChartSettingsState>() {
+class ChartSettings : SerializablePersistentStateComponent<ChartSettingsState>(ChartSettingsState()) {
 
-    override var internalState = ChartSettingsState()
+    fun update(newConfigs: List<ChartConfig>) {
+        updateState { it.copy(charts = newConfigs) }
+    }
 
     companion object {
         fun getInstance(project: Project): ChartSettings =

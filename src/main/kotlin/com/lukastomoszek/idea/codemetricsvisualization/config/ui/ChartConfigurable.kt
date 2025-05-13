@@ -48,7 +48,7 @@ class ChartConfigurable(project: Project) :
     override fun getItemsFromSettings(): List<ChartConfig> = ChartSettings.getInstance(project).state.charts
 
     override fun saveItemsToSettings(items: List<ChartConfig>) {
-        ChartSettings.getInstance(project).state.charts = items.toMutableList()
+        ChartSettings.getInstance(project).update(items)
     }
 
     override fun copyItem(item: ChartConfig): ChartConfig = item.copy()

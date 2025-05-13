@@ -13,7 +13,7 @@ object DefaultChartConfig {
 
 data class ChartSettingsState(
     @XCollection
-    var charts: MutableList<ChartConfig> = mutableListOf()
+    val charts: List<ChartConfig> = listOf()
 )
 
 data class ChartConfig(

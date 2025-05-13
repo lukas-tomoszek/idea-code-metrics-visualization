@@ -68,7 +68,7 @@ class DataSourceConfigurable(project: Project) :
         DataSourceSettings.getInstance(project).state.dataSources
 
     override fun saveItemsToSettings(items: List<DataSourceConfig>) {
-        DataSourceSettings.getInstance(project).state.dataSources = items.toMutableList()
+        DataSourceSettings.getInstance(project).update(items)
     }
 
     override fun copyItem(item: DataSourceConfig): DataSourceConfig = item.copy()

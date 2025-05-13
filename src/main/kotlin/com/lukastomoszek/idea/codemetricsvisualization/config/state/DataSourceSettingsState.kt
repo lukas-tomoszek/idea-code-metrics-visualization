@@ -24,7 +24,7 @@ enum class ImportMode {
 
 data class DataSourceSettingsState(
     @XCollection
-    var dataSources: MutableList<DataSourceConfig> = mutableListOf()
+    val dataSources: List<DataSourceConfig> = listOf()
 )
 
 data class DataSourceConfig(

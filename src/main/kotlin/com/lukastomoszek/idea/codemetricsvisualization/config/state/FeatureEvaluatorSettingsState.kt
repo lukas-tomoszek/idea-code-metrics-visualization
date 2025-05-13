@@ -11,7 +11,7 @@ internal object DefaultFeatureEvaluatorConfig {
 
 data class FeatureEvaluatorSettingsState(
     @XCollection
-    var featureEvaluators: MutableList<FeatureEvaluatorConfig> = mutableListOf()
+    val featureEvaluators: List<FeatureEvaluatorConfig> = listOf()
 )
 
 enum class FeatureParameterType {

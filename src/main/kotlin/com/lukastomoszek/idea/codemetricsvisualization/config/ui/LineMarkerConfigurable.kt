@@ -75,7 +75,7 @@ class LineMarkerConfigurable(project: Project) :
         LineMarkerSettings.getInstance(project).state.lineMarkerConfigs
 
     override fun saveItemsToSettings(items: List<LineMarkerConfig>) {
-        LineMarkerSettings.getInstance(project).state.lineMarkerConfigs = items.toMutableList()
+        LineMarkerSettings.getInstance(project).update(items)
     }
 
     override fun copyItem(item: LineMarkerConfig): LineMarkerConfig =

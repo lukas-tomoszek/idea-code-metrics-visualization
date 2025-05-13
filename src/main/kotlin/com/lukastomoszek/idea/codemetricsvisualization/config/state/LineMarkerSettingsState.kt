@@ -15,7 +15,7 @@ internal object DefaultLineMarkerConfig {
 
 data class LineMarkerSettingsState(
     @XCollection
-    var lineMarkerConfigs: MutableList<LineMarkerConfig> = mutableListOf()
+    val lineMarkerConfigs: List<LineMarkerConfig> = listOf()
 )
 
 data class LineMarkerConfig(

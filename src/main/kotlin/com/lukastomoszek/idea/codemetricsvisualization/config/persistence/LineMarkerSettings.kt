@@ -1,5 +1,6 @@
 package com.lukastomoszek.idea.codemetricsvisualization.config.persistence
 
+import com.intellij.openapi.components.SerializablePersistentStateComponent
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
@@ -12,12 +13,14 @@ import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerSe
     name = "LineMarkerSettings",
     storages = [Storage("codeMetricsVisualizations/lineMarkerSettings.xml")]
 )
-class LineMarkerSettings : AbstractSettingsStateComponent<LineMarkerSettingsState>() {
+class LineMarkerSettings : SerializablePersistentStateComponent<LineMarkerSettingsState>(LineMarkerSettingsState()) {
 
-    override var internalState = LineMarkerSettingsState()
+    fun update(newConfigs: List<LineMarkerConfig>) {
+        updateState { it.copy(lineMarkerConfigs = newConfigs) }
+    }
 
     fun getEnabledLineMarkerConfigs(): List<LineMarkerConfig> =
-        internalState.lineMarkerConfigs.filter {
+        state.lineMarkerConfigs.filter {
             it.enabled && it.sqlTemplate.isNotBlank() && it.lineMarkerRules.isNotEmpty()
         }
 

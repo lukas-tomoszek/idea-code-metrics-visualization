@@ -57,7 +57,7 @@ class FeatureEvaluatorConfigurable(project: Project) :
         FeatureEvaluatorSettings.getInstance(project).state.featureEvaluators
 
     override fun saveItemsToSettings(items: List<FeatureEvaluatorConfig>) {
-        FeatureEvaluatorSettings.getInstance(project).state.featureEvaluators = items.toMutableList()
+        FeatureEvaluatorSettings.getInstance(project).update(items)
     }
 
     override fun copyItem(item: FeatureEvaluatorConfig): FeatureEvaluatorConfig = item.copy()
