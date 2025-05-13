@@ -6,6 +6,10 @@ import com.lukastomoszek.idea.codemetricsvisualization.config.state.util.LocalDa
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
+enum class ImportMode {
+    REPLACE, APPEND
+}
+
 internal object DefaultDataSource {
     const val NAME = "New Data Source"
     const val TABLE_NAME = "new_table"
@@ -17,15 +21,6 @@ SELECT *
 FROM read_csv('/path/to/your/data.csv', header=true);
     """.trimIndent()
 }
-
-enum class ImportMode {
-    REPLACE, APPEND
-}
-
-data class DataSourceSettingsState(
-    @XCollection
-    val configs: List<DataSourceConfig> = listOf()
-)
 
 data class DataSourceConfig(
     override var name: String = DefaultDataSource.NAME,
@@ -43,3 +38,8 @@ data class DataSourceConfig(
         lastImportedAt = LocalDateTime.now()
     }
 }
+
+data class DataSourceSettingsState(
+    @XCollection
+    val configs: List<DataSourceConfig> = listOf()
+)

@@ -26,7 +26,7 @@ class ChartDialog(
 
     override fun createCenterPanel(): JComponent {
         sqlTextArea = JBTextArea(10, 70).apply {
-            text = config.sql
+            text = config.sqlTemplate
             lineWrap = true
             wrapStyleWord = true
         }
@@ -41,7 +41,7 @@ class ChartDialog(
             }
 
             row {
-                label("SQL query:")
+                label("SQL template:")
             }
             row {
                 cell(JBScrollPane(sqlTextArea))
@@ -51,7 +51,7 @@ class ChartDialog(
     }
 
     override fun doOKAction() {
-        config.sql = sqlTextArea.text
+        config.sqlTemplate = sqlTextArea.text
         super.doOKAction()
     }
 }

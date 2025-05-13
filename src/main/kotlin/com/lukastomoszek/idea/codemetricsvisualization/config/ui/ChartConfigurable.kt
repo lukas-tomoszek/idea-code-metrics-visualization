@@ -17,7 +17,7 @@ class ChartConfigurable(project: Project) :
     ) {
 
     private val sqlColumn = object : ColumnInfo<ChartConfig, String>("SQL Template") {
-        override fun valueOf(item: ChartConfig): String = item.sql
+        override fun valueOf(item: ChartConfig): String = item.sqlTemplate
             .replace(Regex("\\s+"), " ")
     }
 

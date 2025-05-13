@@ -3,6 +3,7 @@ package com.lukastomoszek.idea.codemetricsvisualization.config.state
 import com.intellij.util.xmlb.annotations.XCollection
 
 internal object DefaultLineMarkerConfig {
+    const val ENABLED = true
     const val NAME = "New Line Marker Config"
     const val SQL_TEMPLATE = "SELECT COUNT(*) FROM log_entries WHERE method_name = '#method_name#'"
     val RULES = mutableListOf(
@@ -10,13 +11,7 @@ internal object DefaultLineMarkerConfig {
         LineMarkerRule(LineMarkerOperator.GREATER_THAN, 10.0f, "#FFFF00"),
         LineMarkerRule(LineMarkerOperator.GREATER_THAN, 0.0f, "#00FF00")
     )
-    const val ENABLED = true
 }
-
-data class LineMarkerSettingsState(
-    @XCollection
-    val configs: List<LineMarkerConfig> = listOf()
-)
 
 data class LineMarkerConfig(
     var enabled: Boolean = DefaultLineMarkerConfig.ENABLED,
@@ -26,3 +21,8 @@ data class LineMarkerConfig(
     @XCollection
     var lineMarkerRules: MutableList<LineMarkerRule> = DefaultLineMarkerConfig.RULES.map { it.copy() }.toMutableList()
 ) : NamedConfig
+
+data class LineMarkerSettingsState(
+    @XCollection
+    val configs: List<LineMarkerConfig> = listOf()
+)

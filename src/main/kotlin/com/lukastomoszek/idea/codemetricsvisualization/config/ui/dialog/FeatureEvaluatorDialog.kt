@@ -81,12 +81,4 @@ class FeatureEvaluatorDialog(
         }
         return null
     }
-
-    override fun doOKAction() {
-        config.name = nameField.text
-        config.evaluatorMethodFqn = fqnField.text
-        config.featureParameterIndex = indexSpinner.number
-        config.featureParameterType = currentFeatureParameterType
-        super.doOKAction()
-    }
 }

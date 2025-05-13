@@ -108,7 +108,8 @@ class LineMarkerDialog(project: Project, config: LineMarkerConfig, existingLineM
             }
 
             row {
-                cell(JBScrollPane(sqlTextArea)).align(Align.FILL)
+                cell(JBScrollPane(sqlTextArea))
+                    .align(Align.FILL)
             }.resizableRow()
 
             row {

@@ -5,7 +5,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
-import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.*
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.DataSourceConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.DefaultDataSource
@@ -18,7 +17,6 @@ class DataSourceDialog(
     existingDataSourceNames: List<String>
 ) : AbstractNamedDialog<DataSourceConfig>(project, config, existingDataSourceNames) {
 
-    private lateinit var tableNameField: JBTextField
     private lateinit var filePathField: TextFieldWithBrowseButton
     private lateinit var sqlTextArea: JBTextArea
     private var currentImportMode: ImportMode = config.importMode
@@ -54,7 +52,7 @@ class DataSourceDialog(
             }
 
             row("Table Name:") {
-                tableNameField = textField()
+                textField()
                     .bindText(config::tableName)
                     .validationOnInput { if (it.text.isBlank()) error("Table name cannot be empty") else null }
                     .align(AlignX.FILL)
@@ -99,9 +97,6 @@ class DataSourceDialog(
     }
 
     override fun doOKAction() {
-        config.tableName = tableNameField.text
-        config.filePath = filePathField.text
-        config.importMode = currentImportMode
         config.sql = sqlTextArea.text
         super.doOKAction()
     }
