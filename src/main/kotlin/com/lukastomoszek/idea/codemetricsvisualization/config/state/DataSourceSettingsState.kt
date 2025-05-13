@@ -1,9 +1,10 @@
 package com.lukastomoszek.idea.codemetricsvisualization.config.state
 
+import com.intellij.util.xmlb.annotations.OptionTag
 import com.intellij.util.xmlb.annotations.XCollection
+import com.lukastomoszek.idea.codemetricsvisualization.config.state.util.LocalDateTimeConverter
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
 
 internal object DefaultDataSource {
     const val NAME = "New Data Source"
@@ -31,20 +32,14 @@ data class DataSourceConfig(
     var tableName: String = DefaultDataSource.TABLE_NAME,
     var filePath: String = DefaultDataSource.FILE_PATH,
     var importMode: ImportMode = DefaultDataSource.IMPORT_MODE,
-    var lastImportedAt: String? = null,
+    @OptionTag(converter = LocalDateTimeConverter::class)
+    var lastImportedAt: LocalDateTime? = null,
     var sql: String = DefaultDataSource.SQL
 ) {
-    fun getFormattedLastImportedAt(): String {
-        return lastImportedAt?.let {
-            try {
-                LocalDateTime.parse(it).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-            } catch (_: DateTimeParseException) {
-                "Invalid Date"
-            }
-        } ?: "Never"
-    }
+    fun getFormattedLastImportedAt(): String =
+        lastImportedAt?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) ?: "Never"
 
     fun updateLastImportedTimestamp() {
-        lastImportedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        lastImportedAt = LocalDateTime.now()
     }
 }
