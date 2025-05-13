@@ -2,17 +2,19 @@ package com.lukastomoszek.idea.codemetricsvisualization.linemarker.provider
 
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProvider
-import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.IconLoader
+import com.intellij.openapi.util.TextRange
+import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.psi.PsiElement
 import com.intellij.util.Function
-import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.ColorIcon
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.LineMarkerSettings
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerConfig
@@ -22,17 +24,19 @@ import com.lukastomoszek.idea.codemetricsvisualization.db.DuckDbService
 import com.lukastomoszek.idea.codemetricsvisualization.db.model.QueryResult
 import com.lukastomoszek.idea.codemetricsvisualization.linemarker.rule.RuleEvaluator
 import com.lukastomoszek.idea.codemetricsvisualization.util.FormattingUtils
-import java.util.concurrent.Callable
-import java.util.concurrent.Future
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.toList
 import javax.swing.Icon
 
 abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
     private val psiElementClass: Class<T>
-) : LineMarkerProvider, DumbAware {
+) : LineMarkerProvider {
 
     abstract fun filterEnabledConfigs(allEnabledConfigs: List<LineMarkerConfig>): List<LineMarkerConfig>
-    open fun preFilterElement(element: T, project: Project): Boolean = true
-    abstract fun getAnchorElement(element: T): PsiElement?
+    open suspend fun preFilterElement(element: T, project: Project): Boolean = true
+    abstract suspend fun getAnchorElement(element: T): PsiElement?
     abstract fun getLineMarkerGroupName(config: LineMarkerConfig): String
 
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? = null
@@ -41,6 +45,11 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
         elements: List<PsiElement>,
         result: MutableCollection<in LineMarkerInfo<*>>
     ) {
+        if (ApplicationManager.getApplication().isDispatchThread) {
+            thisLogger().warn("collectSlowLineMarkers running on EDT!")
+            return
+        }
+
         if (elements.isEmpty()) return
 
         val project = elements.first().project
@@ -52,65 +61,53 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
             return
         }
 
-        val futures = mutableListOf<Future<MutableList<LineMarkerInfo<*>>>>()
-        val executor = AppExecutorUtil.getAppExecutorService()
-
-        elements.asSequence()
-            .filter { psiElementClass.isInstance(it) }
-            .map {
-                @Suppress("UNCHECKED_CAST")
-                it as T
-            }
-            .filter { preFilterElement(it, project) }
-            .forEach { typedElement ->
-                val callable = Callable {
-                    ProgressManager.checkCanceled()
-                    val markers = mutableListOf<LineMarkerInfo<*>>()
+        runBlockingCancellable {
+            val markers = elements.asFlow()
+                .filter { psiElementClass.isInstance(it) }
+                .map {
+                    @Suppress("UNCHECKED_CAST")
+                    it as T
+                }
+                .filter { preFilterElement(it, project) }
+                .map { typedElement ->
                     try {
-                        ReadAction.run<Throwable> {
-                            if (!typedElement.isValid) return@run
-                            val anchor = getAnchorElement(typedElement)
-                            if (anchor != null && anchor.isValid) {
-                                handleElement(project, typedElement, anchor, relevantConfigs, markers)
-                            }
-                        }
+                        processElementSuspending(project, typedElement, relevantConfigs)
                     } catch (pce: ProcessCanceledException) {
                         throw pce
                     } catch (e: Exception) {
-                        val elementDescription = ReadAction.compute<String, Throwable> {
+                        val elementDescription = readAction {
                             if (typedElement.isValid) typedElement.text.take(50) else "invalid element"
                         }
                         thisLogger().error("Error processing element for line marker: $elementDescription", e)
+                        emptyList()
                     }
-                    markers
-                }
-                futures.add(executor.submit(callable))
-            }
-
-        for (future in futures) {
-            try {
-                ProgressManager.checkCanceled()
-                result.addAll(future.get())
-            } catch (pce: ProcessCanceledException) {
-                futures.forEach { if (!it.isDone && !it.isCancelled) it.cancel(true) }
-                throw pce
-            } catch (e: Exception) {
-                thisLogger().error("Error retrieving line marker results from future", e)
-            }
+                }.toList()
+            result.addAll(markers.flatten())
         }
     }
 
-    private fun handleElement(
+    private suspend fun processElementSuspending(
         project: Project,
         originalElement: T,
-        anchorElement: PsiElement,
-        configs: List<LineMarkerConfig>,
-        elementMarkers: MutableList<LineMarkerInfo<*>>
-    ) {
+        configs: List<LineMarkerConfig>
+    ): List<LineMarkerInfo<*>> {
         ProgressManager.checkCanceled()
-        if (!originalElement.isValid || !anchorElement.isValid) return
 
+        if (!originalElement.isValid) return emptyList()
+        val anchorElement = getAnchorElement(originalElement)
+        if (anchorElement == null || !anchorElement.isValid) return emptyList()
         val contextInfo = PsiContextResolver.getContextInfoFromPsi(originalElement)
+        val originalElementTextForError = originalElement.text ?: "invalid element"
+
+        val elementMarkers = mutableListOf<LineMarkerInfo<*>>()
+
+        if (!readAction { anchorElement.isValid }) {
+            return emptyList()
+        }
+
+        val anchorTextRange = readAction {
+            anchorElement.textRange
+        }
 
         configs.forEach { config ->
             try {
@@ -122,21 +119,23 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
 
                 builtQueryResult.fold(
                     onSuccess = { finalSql ->
-                        val queryResultOutcome = DuckDbService.getInstance(project).executeReadQuery(finalSql)
+                        val queryResultOutcome =
+                            withBackgroundProgress(project, "Gettings line marker data for ${config.name}") {
+                                DuckDbService.getInstance(project).executeReadQuery(finalSql)
+                            }
                         queryResultOutcome.fold(
                             onSuccess = { queryResult ->
                                 val metricValue = extractMetricValue(queryResult, finalSql)
                                 val displayColor = RuleEvaluator.evaluate(metricValue, config.lineMarkerRules)
 
-                                if (displayColor != null) {
+                                if (metricValue != null && displayColor != null) {
                                     val icon: Icon = ColorIcon(10, displayColor)
                                     val tooltipText = "${config.name}: ${FormattingUtils.formatNumber(metricValue)}"
                                     val tooltipProvider = Function { _: PsiElement? -> tooltipText }
 
-                                    if (!anchorElement.isValid) return@forEach
                                     val info = LineMarkerInfo(
                                         anchorElement,
-                                        anchorElement.textRange,
+                                        anchorTextRange,
                                         icon,
                                         tooltipProvider,
                                         null,
@@ -146,44 +145,36 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
                                 }
                             },
                             onFailure = { error ->
+                                if (!readAction { anchorElement.isValid }) return@forEach
                                 val errorMessage = "DB Error: ${error.message?.take(100)} SQL: ${finalSql.take(100)}"
                                 thisLogger().warn("$errorMessage...", error)
-                                if (anchorElement.isValid) addErrorMarker(
-                                    anchorElement,
-                                    config,
-                                    errorMessage,
-                                    elementMarkers
-                                )
+                                addErrorMarker(anchorElement, anchorTextRange, config, errorMessage, elementMarkers)
                             }
                         )
                     },
                     onFailure = { exception ->
+                        if (!readAction { anchorElement.isValid }) return@forEach
                         val errorMessage = "SQL build failed for '${config.name}': ${exception.message?.take(100)}"
                         thisLogger().trace("$errorMessage...")
-                        if (anchorElement.isValid) addErrorMarker(anchorElement, config, errorMessage, elementMarkers)
+                        addErrorMarker(anchorElement, anchorTextRange, config, errorMessage, elementMarkers)
                     }
                 )
             } catch (pce: ProcessCanceledException) {
                 throw pce
             } catch (e: Exception) {
-                val errorMsgText =
-                    ReadAction.compute<String, Throwable> { if (originalElement.isValid) originalElement.text else "invalid element" }
+                if (!readAction { anchorElement.isValid }) return@forEach
                 val errorMessage =
-                    "Error for element '${errorMsgText.take(50)}', config '${config.name}': ${e.message?.take(100)}"
+                    "Error for element '$originalElementTextForError', config '${config.name}': ${e.message?.take(100)}"
                 thisLogger().error("$errorMessage...", e)
-                if (anchorElement.isValid) addErrorMarker(anchorElement, config, errorMessage, elementMarkers)
+                addErrorMarker(anchorElement, anchorTextRange, config, errorMessage, elementMarkers)
             }
         }
+        return elementMarkers
     }
 
     private fun extractMetricValue(queryResult: QueryResult, finalSql: String): Float? {
         return if (queryResult.rows.isNotEmpty() && queryResult.columnNames.isNotEmpty()) {
-            try {
-                queryResult.rows.first()[queryResult.columnNames.first()].toString().toFloat()
-            } catch (e: Exception) {
-                thisLogger().warn("Failed to cast metric value to float: ${e.message}. SQL: $finalSql", e)
-                null
-            }
+            queryResult.rows.first()[queryResult.columnNames.first()].toString().toFloatOrNull()
         } else {
             if (queryResult.rows.isEmpty()) {
                 thisLogger().trace("Query returned no rows for single metric value. SQL: $finalSql")
@@ -194,13 +185,14 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
         }
     }
 
-    protected fun addErrorMarker(
+    protected suspend fun addErrorMarker(
         anchorElement: PsiElement,
+        anchorTextRange: TextRange,
         config: LineMarkerConfig,
         errorMessage: String,
         elementMarkers: MutableList<in LineMarkerInfo<*>>
     ) {
-        if (!anchorElement.isValid) return
+        if (!readAction { anchorElement.isValid }) return
 
         val errorIcon: Icon = IconLoader.getIcon("/icons/breakpointObsolete.svg", this.javaClass)
         val tooltipProvider = { _: PsiElement? ->
@@ -208,7 +200,7 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
         }
         val errorInfo = LineMarkerInfo(
             anchorElement,
-            anchorElement.textRange,
+            anchorTextRange,
             errorIcon,
             tooltipProvider,
             null,

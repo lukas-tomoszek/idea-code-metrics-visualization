@@ -16,11 +16,15 @@ class DbViewerService(
 
     fun getTableNames(callback: (Result<List<String>>) -> Unit) {
         cs.launch {
-            val result = withBackgroundProgress(project, "Fetching Table Names", false) {
-                DuckDbService.getInstance(project).executeReadQuery("SHOW TABLES;")
-                    .mapCatching { queryResult ->
-                        queryResult.rows.mapNotNull { it["name"] as? String }.sorted()
-                    }
+            val result = try {
+                withBackgroundProgress(project, "Fetching Table Names", false) {
+                    DuckDbService.getInstance(project).executeReadQuery("SHOW TABLES;")
+                        .mapCatching { queryResult ->
+                            queryResult.rows.mapNotNull { it["name"] as? String }.sorted()
+                        }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
             }
             callback(result)
         }
@@ -28,10 +32,14 @@ class DbViewerService(
 
     fun getTableColumns(tableName: String, callback: (Result<List<String>>) -> Unit) {
         cs.launch {
-            val result = withBackgroundProgress(project, "Fetching Columns for '$tableName'", false) {
-                DuckDbService.getInstance(project)
-                    .executeReadQuery("SELECT * FROM \"$tableName\" LIMIT 0")
-                    .mapCatching { it.columnNames }
+            val result = try {
+                withBackgroundProgress(project, "Fetching Columns for '$tableName'", false) {
+                    DuckDbService.getInstance(project)
+                        .executeReadQuery("SELECT * FROM \"$tableName\" LIMIT 0")
+                        .mapCatching { it.columnNames }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
             }
             callback(result)
         }
@@ -39,8 +47,12 @@ class DbViewerService(
 
     fun queryTableData(sqlQuery: String, callback: (Result<QueryResult>) -> Unit) {
         cs.launch {
-            val result = withBackgroundProgress(project, "Loading Data for DB Viewer", false) {
-                DuckDbService.getInstance(project).executeReadQuery(sqlQuery)
+            val result = try {
+                withBackgroundProgress(project, "Loading Data for DB Viewer", false) {
+                    DuckDbService.getInstance(project).executeReadQuery(sqlQuery)
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
             }
             callback(result)
         }
@@ -48,12 +60,16 @@ class DbViewerService(
 
     fun getTableRowCount(tableName: String, callback: (Result<Long?>) -> Unit) {
         cs.launch {
-            val result = withBackgroundProgress(project, "Fetching Row Count for '$tableName'", false) {
-                val countQuery = "SELECT COUNT(*) FROM \"$tableName\";"
-                DuckDbService.getInstance(project).executeReadQuery(countQuery)
-                    .mapCatching { queryResult ->
-                        queryResult.rows.firstOrNull()?.values?.firstOrNull() as? Long
-                    }
+            val result = try {
+                withBackgroundProgress(project, "Fetching Row Count for '$tableName'", false) {
+                    val countQuery = "SELECT COUNT(*) FROM \"$tableName\";"
+                    DuckDbService.getInstance(project).executeReadQuery(countQuery)
+                        .mapCatching { queryResult ->
+                            queryResult.rows.firstOrNull()?.values?.firstOrNull() as? Long
+                        }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
             }
             callback(result)
         }

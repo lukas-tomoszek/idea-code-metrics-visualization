@@ -1,5 +1,6 @@
 package com.lukastomoszek.idea.codemetricsvisualization.linemarker.provider
 
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiIdentifier
@@ -9,8 +10,10 @@ import com.lukastomoszek.idea.codemetricsvisualization.db.ContextAwareQueryBuild
 
 class MethodDefinitionLineMarkerProvider : AbstractMetricLineMarkerProvider<PsiIdentifier>(PsiIdentifier::class.java) {
 
-    override fun preFilterElement(element: PsiIdentifier, project: Project): Boolean {
-        return element.parent is PsiMethod && (element.parent as PsiMethod).nameIdentifier == element
+    override suspend fun preFilterElement(element: PsiIdentifier, project: Project): Boolean {
+        return readAction {
+            element.parent is PsiMethod && (element.parent as PsiMethod).nameIdentifier == element
+        }
     }
 
     override fun filterEnabledConfigs(allEnabledConfigs: List<LineMarkerConfig>): List<LineMarkerConfig> {
@@ -20,8 +23,10 @@ class MethodDefinitionLineMarkerProvider : AbstractMetricLineMarkerProvider<PsiI
         }
     }
 
-    override fun getAnchorElement(element: PsiIdentifier): PsiElement? {
-        return (element.parent as? PsiMethod)?.nameIdentifier
+    override suspend fun getAnchorElement(element: PsiIdentifier): PsiElement? {
+        return readAction {
+            (element.parent as? PsiMethod)?.nameIdentifier
+        }
     }
 
     override fun getLineMarkerGroupName(config: LineMarkerConfig): String {

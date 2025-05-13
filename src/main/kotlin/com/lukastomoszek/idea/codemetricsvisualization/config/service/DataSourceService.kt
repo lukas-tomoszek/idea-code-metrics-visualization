@@ -2,6 +2,9 @@ package com.lukastomoszek.idea.codemetricsvisualization.config.service
 
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
+import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
@@ -15,26 +18,26 @@ import kotlinx.coroutines.withContext
 import java.sql.SQLException
 
 @Service(Service.Level.PROJECT)
-class DataSourceService(
-    private val project: Project,
-    private val cs: CoroutineScope
-) {
+class DataSourceService(private val project: Project, private val cs: CoroutineScope) {
     fun executeImport(config: DataSourceConfig, refreshCallback: () -> Unit = {}) {
-        val importSql = config.sql
-        if (importSql.isBlank()) {
-            cs.launch {
-                showNotification("Import SQL for '${config.name}' is blank. Cannot execute.", NotificationType.WARNING)
-            }
-            return
-        }
-
-
         cs.launch {
+            thisLogger().info("Executing import for '${config.name}'")
+            val importSql = config.sql
+            if (importSql.isBlank()) {
+                showNotification("Import SQL for '${config.name}' is blank. Cannot execute.", NotificationType.WARNING)
+                return@launch
+            }
+
             showNotification("Executing import for '${config.name}'", NotificationType.INFORMATION)
 
-            val result = withBackgroundProgress(project, "Executing import for '${config.name}'", false) {
-                DuckDbService.getInstance(project).executeWriteQuery(importSql)
+            val result = try {
+                withBackgroundProgress(project, "Executing import for '${config.name}'", true) {
+                    DuckDbService.getInstance(project).executeWriteQuery(importSql)
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
             }
+
 
             result.onSuccess {
                 config.updateLastImportedTimestamp()
@@ -52,16 +55,20 @@ class DataSourceService(
     }
 
     fun dropTable(tableName: String, callback: () -> Unit = {}) {
-        if (tableName.isBlank()) {
-            thisLogger().warn("Table name to drop is blank.")
-            cs.launch { showNotification("Table name to drop cannot be blank.", NotificationType.WARNING) }
-            return
-        }
-
         cs.launch {
-            val result = withBackgroundProgress(project, "Dropping table: $tableName", false) {
-                val sql = "DROP TABLE IF EXISTS \"$tableName\";"
-                DuckDbService.getInstance(project).executeWriteQuery(sql)
+            if (tableName.isBlank()) {
+                thisLogger().warn("Table name to drop is blank.")
+                showNotification("Table name to drop cannot be blank.", NotificationType.WARNING)
+                return@launch
+            }
+
+            val result = try {
+                withBackgroundProgress(project, "Dropping table: $tableName", false) {
+                    val sql = "DROP TABLE IF EXISTS \"$tableName\";"
+                    DuckDbService.getInstance(project).executeWriteQuery(sql)
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
             }
 
             result.onSuccess {
@@ -76,7 +83,7 @@ class DataSourceService(
     }
 
     private suspend fun showNotification(message: String, type: NotificationType) {
-        withContext(Dispatchers.Main) {
+        withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
             NotificationGroupManager.getInstance()
                 .getNotificationGroup("Code Metrics Visualization Notifications")
                 .createNotification(message, type)

@@ -4,13 +4,14 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.lukastomoszek.idea.codemetricsvisualization.db.model.QueryResult
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.ResultSetMetaData
 import java.sql.SQLException
 import java.util.*
-import java.util.concurrent.atomic.AtomicBoolean
 
 @Service(Service.Level.PROJECT)
 class DuckDbService(private val project: Project) {
@@ -18,8 +19,8 @@ class DuckDbService(private val project: Project) {
     private val dbFile: File
         get() = File(project.basePath, ".idea/codeMetricsVisualizations/data.db")
 
-    private val isWriting = AtomicBoolean(false)
     private var driverLoaded = false
+    private val writeMutex = Mutex()
 
     init {
         loadDriver()
@@ -67,26 +68,13 @@ class DuckDbService(private val project: Project) {
         return DriverManager.getConnection("jdbc:duckdb:${dbFile.absolutePath}", props)
     }
 
-    private inline fun <T> withWriteLock(action: () -> Result<T>): Result<T> {
-        if (!isWriting.compareAndSet(false, true)) {
-            val errorMessage = "Another database write operation is already in progress."
-            thisLogger().warn(errorMessage)
-            return Result.failure(SQLException(errorMessage))
-        }
-        return try {
-            action()
-        } finally {
-            isWriting.set(false)
-        }
-    }
-
-    fun executeWriteQuery(sql: String): Result<Unit> {
+    suspend fun executeWriteQuery(sql: String): Result<Unit> {
         if (sql.isBlank()) {
             thisLogger().warn("Write SQL command is blank, skipping execution.")
             return Result.failure(IllegalArgumentException("Write SQL command cannot be blank."))
         }
 
-        return withWriteLock {
+        return writeMutex.withLock {
             runCatching {
                 getConnection(readOnly = false).use { conn ->
                     conn.createStatement().use { statement ->
@@ -116,7 +104,7 @@ class DuckDbService(private val project: Project) {
             return it
         }
 
-        if (isWriting.get()) {
+        if (writeMutex.isLocked) {
             val errorMessage = "Database is currently busy with a write operation."
             thisLogger().debug("$errorMessage SQL: $sql")
             return Result.failure(SQLException(errorMessage))
