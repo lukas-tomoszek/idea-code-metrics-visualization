@@ -6,15 +6,13 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.DataSourceConfig
 import com.lukastomoszek.idea.codemetricsvisualization.db.DuckDbService
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import java.sql.SQLException
 
 @Service(Service.Level.PROJECT)
@@ -35,6 +33,7 @@ class DataSourceService(private val project: Project, private val cs: CoroutineS
                     DuckDbService.getInstance(project).executeWriteQuery(importSql)
                 }
             } catch (e: Exception) {
+                if (e is ControlFlowException || e is CancellationException) throw e
                 Result.failure(e)
             }
 
@@ -44,6 +43,7 @@ class DataSourceService(private val project: Project, private val cs: CoroutineS
                 showNotification("Import for '${config.name}' executed successfully.", NotificationType.INFORMATION)
                 refreshCallback()
             }.onFailure { error ->
+                if (error is ControlFlowException || error is CancellationException) throw error
                 val msg = when (error) {
                     is SQLException -> "Database error during import of '${config.name}': ${error.message}"
                     else -> "Failed to import '${config.name}': ${error.message}"
@@ -68,6 +68,7 @@ class DataSourceService(private val project: Project, private val cs: CoroutineS
                     DuckDbService.getInstance(project).executeWriteQuery(sql)
                 }
             } catch (e: Exception) {
+                if (e is ControlFlowException || e is CancellationException) throw e
                 Result.failure(e)
             }
 
@@ -75,6 +76,7 @@ class DataSourceService(private val project: Project, private val cs: CoroutineS
                 showNotification("Table '$tableName' dropped successfully.", NotificationType.INFORMATION)
                 callback()
             }.onFailure { error ->
+                if (error is ControlFlowException || error is CancellationException) throw error
                 val msg = "Error dropping table '$tableName': ${error.message}"
                 thisLogger().error(msg, error)
                 showNotification(msg, NotificationType.ERROR)

@@ -1,8 +1,10 @@
 package com.lukastomoszek.idea.codemetricsvisualization.linemarker.rule
 
+import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.thisLogger
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerOperator
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerRule
+import kotlinx.coroutines.CancellationException
 import java.awt.Color
 
 object RuleEvaluator {
@@ -38,6 +40,7 @@ object RuleEvaluator {
                     }
                 }
             } catch (e: Exception) {
+                if (e is ControlFlowException || e is CancellationException) throw e
                 thisLogger().error("Error evaluating rule: $rule for value: $value", e)
             }
         }

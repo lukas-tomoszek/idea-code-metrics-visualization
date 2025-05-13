@@ -1,9 +1,11 @@
 package com.lukastomoszek.idea.codemetricsvisualization.db
 
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.lukastomoszek.idea.codemetricsvisualization.db.model.QueryResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
@@ -84,12 +86,13 @@ class DuckDbService(private val project: Project) {
                 }
                 thisLogger().info("Successfully executed write SQL.")
                 QueryCacheService.getInstance(project).clear()
-            }.onFailure { e ->
-                val errorMessage = when (e) {
-                    is SQLException -> "SQL Error executing write query '$sql': ${e.message}"
-                    else -> "Unexpected error during write SQL for query '$sql': ${e.message}"
+            }.onFailure { error ->
+                if (error is ControlFlowException || error is CancellationException) throw error
+                val errorMessage = when (error) {
+                    is SQLException -> "SQL Error executing write query '$sql': ${error.message}"
+                    else -> "Unexpected error during write SQL for query '$sql': ${error.message}"
                 }
-                thisLogger().error(errorMessage, e)
+                thisLogger().error(errorMessage, error)
             }
         }
     }
@@ -134,12 +137,13 @@ class DuckDbService(private val project: Project) {
             }
         }.onSuccess { queryResult ->
             QueryCacheService.getInstance(project).put(sql, Result.success(queryResult))
-        }.onFailure { e ->
-            val errorMessage = when (e) {
-                is SQLException -> "Database Read Error for query '$sql': ${e.message}"
-                else -> "Unexpected Read Error for query '$sql': ${e.message}"
+        }.onFailure { error ->
+            if (error is ControlFlowException || error is CancellationException) throw error
+            val errorMessage = when (error) {
+                is SQLException -> "Database Read Error for query '$sql': ${error.message}"
+                else -> "Unexpected Read Error for query '$sql': ${error.message}"
             }
-            thisLogger().warn(errorMessage, e)
+            thisLogger().warn(errorMessage, error)
         }
     }
 

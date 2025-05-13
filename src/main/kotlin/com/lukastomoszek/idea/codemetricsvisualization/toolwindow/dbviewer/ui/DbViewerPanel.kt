@@ -1,6 +1,7 @@
 package com.lukastomoszek.idea.codemetricsvisualization.toolwindow.dbviewer.ui
 
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
@@ -17,6 +18,7 @@ import com.intellij.util.ui.JBUI
 import com.lukastomoszek.idea.codemetricsvisualization.config.ui.DataSourceConfigurable
 import com.lukastomoszek.idea.codemetricsvisualization.db.model.QueryResult
 import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.dbviewer.service.DbViewerService
+import kotlinx.coroutines.CancellationException
 import java.awt.BorderLayout
 import java.awt.event.ActionListener
 import java.awt.event.ItemEvent
@@ -112,9 +114,10 @@ class DbViewerPanel(private val project: Project) : SimpleToolWindowPanel(true, 
                     val columnString = if (columns.isEmpty()) "*" else columns.joinToString(", ") { "\"$it\"" }
                     "SELECT $columnString FROM \"$tableName\" LIMIT $ROW_LIMIT"
                 },
-                onFailure = {
+                onFailure = { error ->
+                    if (error is ControlFlowException || error is CancellationException) throw error
                     statusLabel.text = "Error fetching columns for '$tableName', using default query."
-                    thisLogger().warn("Error fetching columns for $tableName: ${it.message}", it)
+                    thisLogger().warn("Error fetching columns for $tableName: ${error.message}", error)
                     "SELECT * FROM \"$tableName\" LIMIT $ROW_LIMIT"
                 }
             )
@@ -165,8 +168,9 @@ class DbViewerPanel(private val project: Project) : SimpleToolWindowPanel(true, 
                         }
                     }
                 },
-                onFailure = {
-                    statusLabel.text = "Error loading table list: ${it.message}"
+                onFailure = { error ->
+                    if (error is ControlFlowException || error is CancellationException) throw error
+                    statusLabel.text = "Error loading table list: ${error.message}"
                     tableListModel.removeAll()
                     tableModel.clearData()
                 }
@@ -217,6 +221,7 @@ class DbViewerPanel(private val project: Project) : SimpleToolWindowPanel(true, 
                 updateStatusLabelFromResult(queryResult, tableName, totalCount)
             },
             onFailure = { error ->
+                if (error is ControlFlowException || error is CancellationException) throw error
                 val context = tableName?.let { "for table '$it'" } ?: ""
                 statusLabel.text = "Error querying $context: ${error.message}"
                 tableModel.clearData()

@@ -4,15 +4,13 @@ import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProvider
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.editor.markup.GutterIconRenderer
-import com.intellij.openapi.progress.ProcessCanceledException
-import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.util.TextRange
-import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.psi.PsiElement
 import com.intellij.util.Function
 import com.intellij.util.ui.ColorIcon
@@ -24,6 +22,7 @@ import com.lukastomoszek.idea.codemetricsvisualization.db.DuckDbService
 import com.lukastomoszek.idea.codemetricsvisualization.db.model.QueryResult
 import com.lukastomoszek.idea.codemetricsvisualization.linemarker.rule.RuleEvaluator
 import com.lukastomoszek.idea.codemetricsvisualization.util.FormattingUtils
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -72,9 +71,8 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
                 .map { typedElement ->
                     try {
                         processElementSuspending(project, typedElement, relevantConfigs)
-                    } catch (pce: ProcessCanceledException) {
-                        throw pce
                     } catch (e: Exception) {
+                        if (e is ControlFlowException || e is CancellationException) throw e
                         val elementDescription = readAction {
                             if (typedElement.isValid) typedElement.text.take(50) else "invalid element"
                         }
@@ -91,7 +89,6 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
         originalElement: T,
         configs: List<LineMarkerConfig>
     ): List<LineMarkerInfo<*>> {
-        ProgressManager.checkCanceled()
 
         if (!originalElement.isValid) return emptyList()
         val anchorElement = getAnchorElement(originalElement)
@@ -111,7 +108,6 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
 
         configs.forEach { config ->
             try {
-                ProgressManager.checkCanceled()
                 val builtQueryResult = ContextAwareQueryBuilder.buildQuery(
                     config.sqlTemplate,
                     contextInfo
@@ -119,10 +115,7 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
 
                 builtQueryResult.fold(
                     onSuccess = { finalSql ->
-                        val queryResultOutcome =
-                            withBackgroundProgress(project, "Gettings line marker data for ${config.name}") {
-                                DuckDbService.getInstance(project).executeReadQuery(finalSql)
-                            }
+                        val queryResultOutcome = DuckDbService.getInstance(project).executeReadQuery(finalSql)
                         queryResultOutcome.fold(
                             onSuccess = { queryResult ->
                                 val metricValue = extractMetricValue(queryResult, finalSql)
@@ -145,6 +138,7 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
                                 }
                             },
                             onFailure = { error ->
+                                if (error is ControlFlowException || error is CancellationException) throw error
                                 if (!readAction { anchorElement.isValid }) return@forEach
                                 val errorMessage = "DB Error: ${error.message?.take(100)} SQL: ${finalSql.take(100)}"
                                 thisLogger().warn("$errorMessage...", error)
@@ -152,16 +146,16 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
                             }
                         )
                     },
-                    onFailure = { exception ->
+                    onFailure = { error ->
+                        if (error is ControlFlowException || error is CancellationException) throw error
                         if (!readAction { anchorElement.isValid }) return@forEach
-                        val errorMessage = "SQL build failed for '${config.name}': ${exception.message?.take(100)}"
+                        val errorMessage = "SQL build failed for '${config.name}': ${error.message?.take(100)}"
                         thisLogger().trace("$errorMessage...")
                         addErrorMarker(anchorElement, anchorTextRange, config, errorMessage, elementMarkers)
                     }
                 )
-            } catch (pce: ProcessCanceledException) {
-                throw pce
             } catch (e: Exception) {
+                if (e is ControlFlowException || e is CancellationException) throw e
                 if (!readAction { anchorElement.isValid }) return@forEach
                 val errorMessage =
                     "Error for element '$originalElementTextForError', config '${config.name}': ${e.message?.take(100)}"

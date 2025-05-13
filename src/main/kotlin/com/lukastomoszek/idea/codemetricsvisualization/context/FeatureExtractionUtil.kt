@@ -1,11 +1,13 @@
 package com.lukastomoszek.idea.codemetricsvisualization.context
 
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.psi.*
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.FeatureEvaluatorSettings
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.FeatureEvaluatorConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.FeatureParameterType
+import kotlinx.coroutines.CancellationException
 
 object FeatureExtractionUtil {
 
@@ -66,6 +68,7 @@ object FeatureExtractionUtil {
                 )
                 null
             } catch (e: Exception) {
+                if (e is ControlFlowException || e is CancellationException) throw e
                 thisLogger().error(
                     "Unexpected error extracting feature name from call ${callExpression.text} at index ${config.featureParameterIndex}. Evaluator: ${config.name}",
                     e

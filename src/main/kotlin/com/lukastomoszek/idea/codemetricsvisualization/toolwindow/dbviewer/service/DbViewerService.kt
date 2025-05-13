@@ -1,10 +1,12 @@
 package com.lukastomoszek.idea.codemetricsvisualization.toolwindow.dbviewer.service
 
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.lukastomoszek.idea.codemetricsvisualization.db.DuckDbService
 import com.lukastomoszek.idea.codemetricsvisualization.db.model.QueryResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -24,6 +26,7 @@ class DbViewerService(
                         }
                 }
             } catch (e: Exception) {
+                if (e is ControlFlowException || e is CancellationException) throw e
                 Result.failure(e)
             }
             callback(result)
@@ -39,6 +42,7 @@ class DbViewerService(
                         .mapCatching { it.columnNames }
                 }
             } catch (e: Exception) {
+                if (e is ControlFlowException || e is CancellationException) throw e
                 Result.failure(e)
             }
             callback(result)
@@ -52,6 +56,7 @@ class DbViewerService(
                     DuckDbService.getInstance(project).executeReadQuery(sqlQuery)
                 }
             } catch (e: Exception) {
+                if (e is ControlFlowException || e is CancellationException) throw e
                 Result.failure(e)
             }
             callback(result)
@@ -69,6 +74,7 @@ class DbViewerService(
                         }
                 }
             } catch (e: Exception) {
+                if (e is ControlFlowException || e is CancellationException) throw e
                 Result.failure(e)
             }
             callback(result)
