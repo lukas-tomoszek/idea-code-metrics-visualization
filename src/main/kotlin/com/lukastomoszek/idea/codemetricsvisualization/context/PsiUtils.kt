@@ -1,6 +1,9 @@
 package com.lukastomoszek.idea.codemetricsvisualization.context
 
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiTreeUtil
@@ -20,6 +23,13 @@ object PsiUtils {
             } else {
                 methodName
             }
+        }
+    }
+
+    suspend fun findPsiElementAtOffset(project: Project, editor: Editor, offset: Int): PsiElement? {
+        return readAction {
+            val psiFile = PsiDocumentManager.getInstance(project).getPsiFile(editor.document) ?: return@readAction null
+            psiFile.findElementAt(offset)
         }
     }
 }

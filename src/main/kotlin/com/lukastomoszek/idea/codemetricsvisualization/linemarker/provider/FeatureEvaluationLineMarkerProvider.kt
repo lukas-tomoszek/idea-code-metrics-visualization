@@ -6,7 +6,6 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethodCallExpression
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.FeatureEvaluatorSettings
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerConfig
-import com.lukastomoszek.idea.codemetricsvisualization.context.FeatureExtractionUtil
 import com.lukastomoszek.idea.codemetricsvisualization.context.PsiUtils
 import com.lukastomoszek.idea.codemetricsvisualization.db.ContextAwareQueryBuilder
 
@@ -30,9 +29,7 @@ class FeatureEvaluationLineMarkerProvider :
         }
         if (resolvedMethod != null) {
             val methodFqn = PsiUtils.getContainingMethodFqn(resolvedMethod)
-            return methodFqn != null &&
-                    configuredEvaluatorFqns.contains(methodFqn) &&
-                    FeatureExtractionUtil.getFeatureName(element) != null
+            return methodFqn != null && configuredEvaluatorFqns.contains(methodFqn)
         } else {
             return false
         }

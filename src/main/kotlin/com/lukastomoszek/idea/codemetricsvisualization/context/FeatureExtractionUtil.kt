@@ -4,6 +4,7 @@ import com.intellij.openapi.application.readAction
 import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.psi.*
+import com.intellij.psi.util.PsiTreeUtil
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.FeatureEvaluatorSettings
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.FeatureEvaluatorConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.FeatureParameterType
@@ -11,17 +12,21 @@ import kotlinx.coroutines.CancellationException
 
 object FeatureExtractionUtil {
 
-    suspend fun getFeatureName(callExpression: PsiElement): String? {
-        if (callExpression !is PsiMethodCallExpression) {
-            thisLogger().trace("getFeatureName called with non-method-call element: ${callExpression.javaClass.simpleName}")
-            return null
-        }
+    suspend fun getFeatureName(element: PsiElement): String? {
+        val (callExpression, resolvedMethod) = readAction {
+            val call = (element as? PsiMethodCallExpression)
+                ?: PsiTreeUtil.getParentOfType(element, PsiMethodCallExpression::class.java)
+                ?: return@readAction null.also {
+                    thisLogger().trace("Could not find PsiMethodCallExpression (self or parent) for element: ${element.text}")
+                }
 
-        val resolvedMethod = readAction {
-            callExpression.resolveMethod()
-        } ?: return null.also {
-            thisLogger().trace("Could not resolve method for call: ${callExpression.text}")
-        }
+            val resolved = call.resolveMethod()
+                ?: return@readAction null.also {
+                    thisLogger().trace("Could not resolve method for call: ${call.text}")
+                }
+
+            call to resolved
+        } ?: return null
 
         val project = callExpression.project
         val calleeFqn = PsiUtils.getContainingMethodFqn(resolvedMethod)

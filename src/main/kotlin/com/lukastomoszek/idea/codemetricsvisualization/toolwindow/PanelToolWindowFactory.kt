@@ -7,12 +7,17 @@ import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.content.ContentManagerEvent
 import com.intellij.ui.content.ContentManagerListener
+import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.ui.ChartViewerPanel
 import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.dbviewer.ui.DbViewerPanel
 
 class PanelToolWindowFactory : ToolWindowFactory, DumbAware {
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val contentFactory = ContentFactory.getInstance()
+
+        val chartViewerPanel = ChartViewerPanel(project)
+        val chartContent = contentFactory.createContent(chartViewerPanel, "Chart", false)
+        toolWindow.contentManager.addContent(chartContent)
 
         val dbViewerPanel = DbViewerPanel(project)
         val dbViewerContent = contentFactory.createContent(dbViewerPanel, "DB Viewer", false)
@@ -21,6 +26,7 @@ class PanelToolWindowFactory : ToolWindowFactory, DumbAware {
         toolWindow.contentManager.addContentManagerListener(object : ContentManagerListener {
             override fun selectionChanged(event: ContentManagerEvent) {
                 when (val component = event.content.component) {
+                    is ChartViewerPanel -> component.refreshPanelOnShow()
                     is DbViewerPanel -> component.refreshPanelOnShow()
                 }
             }
