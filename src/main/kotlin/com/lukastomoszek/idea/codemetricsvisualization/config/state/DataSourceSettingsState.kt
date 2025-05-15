@@ -15,6 +15,7 @@ internal object DefaultDataSource {
     const val TABLE_NAME = "new_table"
     const val FILE_PATH = ""
     val IMPORT_MODE = ImportMode.REPLACE
+    const val LLM_ADDITIONAL_INFO = ""
     val SQL: String = """
 CREATE OR REPLACE TABLE $TABLE_NAME AS
 SELECT *
@@ -27,6 +28,7 @@ data class DataSourceConfig(
     var tableName: String = DefaultDataSource.TABLE_NAME,
     var filePath: String = DefaultDataSource.FILE_PATH,
     var importMode: ImportMode = DefaultDataSource.IMPORT_MODE,
+    var llmAdditionalInfo: String = DefaultDataSource.LLM_ADDITIONAL_INFO,
     @OptionTag(converter = LocalDateTimeConverter::class)
     var lastImportedAt: LocalDateTime? = null,
     var sql: String = DefaultDataSource.SQL

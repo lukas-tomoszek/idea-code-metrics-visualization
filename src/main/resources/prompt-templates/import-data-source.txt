@@ -14,6 +14,9 @@ Sample Data (5–10 lines):
 {{fileSample}}
 ```
 
+Additional Information for LLM:
+{{additionalInfo}}
+
 ---
 
 Task:

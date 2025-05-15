@@ -65,6 +65,7 @@ class LlmPromptGenerationService(
             .replace("{{tableName}}", config.tableName)
             .replace("{{importMode}}", config.importMode.name.lowercase())
             .replace("{{fileSample}}", fileSample)
+            .replace("{{additionalInfo}}", config.llmAdditionalInfo)
     }
 
     private suspend fun loadTemplate(fileName: String): String {
