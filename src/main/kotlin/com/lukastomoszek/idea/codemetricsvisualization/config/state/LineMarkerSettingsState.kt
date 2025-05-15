@@ -11,15 +11,19 @@ internal object DefaultLineMarkerConfig {
         LineMarkerRule(LineMarkerOperator.GREATER_THAN, 10.0f, "#FFFF00"),
         LineMarkerRule(LineMarkerOperator.GREATER_THAN, 0.0f, "#00FF00")
     )
+    const val LLM_DESCRIPTION = ""
+    val LLM_RELEVANT_TABLE_NAMES: List<String> = emptyList()
 }
 
 data class LineMarkerConfig(
     var enabled: Boolean = DefaultLineMarkerConfig.ENABLED,
     override var name: String = DefaultLineMarkerConfig.NAME,
     var sqlTemplate: String = DefaultLineMarkerConfig.SQL_TEMPLATE,
-
     @XCollection
-    var lineMarkerRules: MutableList<LineMarkerRule> = DefaultLineMarkerConfig.RULES.map { it.copy() }.toMutableList()
+    var lineMarkerRules: MutableList<LineMarkerRule> = DefaultLineMarkerConfig.RULES.map { it.copy() }.toMutableList(),
+    var llmDescription: String = DefaultLineMarkerConfig.LLM_DESCRIPTION,
+    @XCollection
+    var llmRelevantTableNames: List<String> = DefaultLineMarkerConfig.LLM_RELEVANT_TABLE_NAMES
 ) : NamedConfig
 
 data class LineMarkerSettingsState(

@@ -1,0 +1,23 @@
+# Generate DuckDB SQL for Chart
+
+Description from User:
+{{llmDescription}}
+
+---
+Task:
+Generate a DuckDB SQL query suitable for creating a chart.
+The query should:
+1. Return two columns.
+   - The first column will be used for the X-axis (labels, categories, or time series).
+   - The second column will be used for the Y-axis (values).
+2. Use placeholders `#method_name#` (for the fully qualified name of a user-selected method from the current file, or '%' if 'All Methods' is selected) and/or `#feature_name#` (for the name of a user-selected feature from the current file, or '%' if 'All Features' is selected) if filtering by context is desired.
+   - Example: `SELECT date_trunc('day', timestamp) AS day, COUNT(*) AS errors FROM my_logs WHERE event = 'ERROR' GROUP BY day ORDER BY day;`
+   - Example: `SELECT feature_flag, SUM(value) FROM events WHERE method_name LIKE '#method_name#' GROUP BY feature_flag;`
+3. Refer to the table samples below for available columns and data structure.
+
+_No extra commentary—SQL only._
+
+---
+Available Table Samples (Top 10 rows using `USING SAMPLE 10 ROWS`):
+
+{{tableSamples}}

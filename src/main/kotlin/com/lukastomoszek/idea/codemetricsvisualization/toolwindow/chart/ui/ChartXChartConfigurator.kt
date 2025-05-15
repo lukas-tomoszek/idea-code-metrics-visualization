@@ -21,8 +21,6 @@ object ChartXChartConfigurator {
         plotBorderColor = JBColor.border()
         axisTickLabelsColor = JBColor.foreground()
 
-        xAxisLabelRotation = 90
-        xAxisLabelAlignment = AxesChartStyler.TextAlignment.Right
         yAxisLabelAlignment = AxesChartStyler.TextAlignment.Right
         isXAxisTitleVisible = false
         isYAxisTitleVisible = false
@@ -34,8 +32,10 @@ object ChartXChartConfigurator {
         isToolTipsAlwaysVisible = false
         toolTipHighlightColor = JBColor.ORANGE
 
-        val showXLabels = labels.size < 50
+        val showXLabels = labels.size <= 100
+        val verticalXLabels = labels.size > 20
         isXAxisTicksVisible = showXLabels
+        xAxisLabelRotation = if (verticalXLabels) 90 else 0
         toolTipType = if (showXLabels) Styler.ToolTipType.yLabels else Styler.ToolTipType.xAndYLabels
 
         val allValuesAreIntegers = values.flatten().all { (it.toDouble() % 1.0) == 0.0 }

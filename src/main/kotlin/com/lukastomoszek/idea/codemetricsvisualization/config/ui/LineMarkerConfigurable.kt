@@ -38,6 +38,14 @@ class LineMarkerConfigurable(project: Project) :
         }
     }
 
+    private val llmDescriptionColumn = object : ColumnInfo<LineMarkerConfig, String>("LLM Description") {
+        override fun valueOf(item: LineMarkerConfig): String = item.llmDescription
+    }
+
+    private val llmTablesColumn = object : ColumnInfo<LineMarkerConfig, String>("LLM Tables") {
+        override fun valueOf(item: LineMarkerConfig): String = item.llmRelevantTableNames.joinToString(", ")
+    }
+
     private val sqlTemplateColumn = object : ColumnInfo<LineMarkerConfig, String>("SQL Template") {
         override fun valueOf(item: LineMarkerConfig): String = item.sqlTemplate
             .replace(Regex("\\s+"), " ")
@@ -48,7 +56,7 @@ class LineMarkerConfigurable(project: Project) :
     }
 
     override fun getColumnInfos(): Array<ColumnInfo<LineMarkerConfig, *>> =
-        arrayOf(enabledColumn, nameColumn, sqlTemplateColumn, rulesCountColumn)
+        arrayOf(enabledColumn, nameColumn, llmDescriptionColumn, llmTablesColumn, sqlTemplateColumn, rulesCountColumn)
 
     override fun updateTable(table: JBTable) {
         val enabledCol = table.columnModel.getColumn(0)
@@ -76,5 +84,8 @@ class LineMarkerConfigurable(project: Project) :
     }
 
     override fun copyItem(item: LineMarkerConfig): LineMarkerConfig =
-        item.copy(lineMarkerRules = item.lineMarkerRules.map { it.copy() }.toMutableList())
+        item.copy(
+            lineMarkerRules = item.lineMarkerRules.map { it.copy() }.toMutableList(),
+            llmRelevantTableNames = item.llmRelevantTableNames.toList()
+        )
 }

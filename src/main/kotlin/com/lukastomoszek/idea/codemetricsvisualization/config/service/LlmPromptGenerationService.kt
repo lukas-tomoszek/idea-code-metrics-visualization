@@ -10,7 +10,11 @@ import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.project.Project
+import com.lukastomoszek.idea.codemetricsvisualization.config.state.ChartConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.DataSourceConfig
+import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerConfig
+import com.lukastomoszek.idea.codemetricsvisualization.db.DuckDbService
+import com.lukastomoszek.idea.codemetricsvisualization.db.model.QueryResult
 import kotlinx.coroutines.*
 import java.awt.datatransfer.StringSelection
 import java.io.File
@@ -36,18 +40,87 @@ class LlmPromptGenerationService(
                 showNotification(msg, NotificationType.ERROR)
                 return@launch
             }
+            copyToClipboardAndNotify(prompt, "AI prompt for '${config.name}' copied to clipboard.")
+        }
+    }
 
-            runCatching {
-                withContext(Dispatchers.IO) {
-                    CopyPasteManager.getInstance().setContents(StringSelection(prompt))
-                }
-            }.getOrElse {
-                showNotification("Failed to copy prompt to clipboard.", NotificationType.ERROR)
+    fun generateLineMarkerSqlPrompt(config: LineMarkerConfig) {
+        cs.launch {
+            val prompt = runCatching {
+                val tableSamples = fetchTableSamples(config.llmRelevantTableNames)
+                val template = loadTemplate("linemarker-sql.txt")
+                createLineMarkerPrompt(config, tableSamples, template)
+            }.getOrElse { e ->
+                if (e is ControlFlowException || e is CancellationException) throw e
+                val msg = "Failed to generate Line Marker prompt for '${config.name}': ${e.message}"
+                thisLogger().warn(msg, e)
+                showNotification(msg, NotificationType.ERROR)
                 return@launch
             }
-
-            showNotification("AI prompt for '${config.name}' copied to clipboard.", NotificationType.INFORMATION)
+            copyToClipboardAndNotify(prompt, "AI prompt for Line Marker '${config.name}' copied to clipboard.")
         }
+    }
+
+    fun generateChartSqlPrompt(config: ChartConfig) {
+        cs.launch {
+            val prompt = runCatching {
+                val tableSamples = fetchTableSamples(config.llmRelevantTableNames)
+                val template = loadTemplate("chart-sql.txt")
+                createChartPrompt(config, tableSamples, template)
+            }.getOrElse { e ->
+                if (e is ControlFlowException || e is CancellationException) throw e
+                val msg = "Failed to generate Chart prompt for '${config.name}': ${e.message}"
+                thisLogger().warn(msg, e)
+                showNotification(msg, NotificationType.ERROR)
+                return@launch
+            }
+            copyToClipboardAndNotify(prompt, "AI prompt for Chart '${config.name}' copied to clipboard.")
+        }
+    }
+
+    private suspend fun copyToClipboardAndNotify(prompt: String, successMessage: String) {
+        runCatching {
+            withContext(Dispatchers.IO) {
+                CopyPasteManager.getInstance().setContents(StringSelection(prompt))
+            }
+        }.getOrElse {
+            showNotification("Failed to copy prompt to clipboard.", NotificationType.ERROR)
+            return
+        }
+        showNotification(successMessage, NotificationType.INFORMATION)
+    }
+
+    private suspend fun fetchTableSamples(tableNames: List<String>): String {
+        if (tableNames.isEmpty()) return "No relevant tables specified."
+        val duckDbService = DuckDbService.getInstance(project)
+        return tableNames.joinToString("\n\n") { tableName ->
+            val sampleQuery = "SELECT * FROM \"$tableName\" USING SAMPLE 10 ROWS;"
+            val result = duckDbService.executeReadQuery(sampleQuery)
+            formatTableSample(tableName, result)
+        }
+    }
+
+    private fun formatTableSample(tableName: String, result: Result<QueryResult>): String {
+        return result.fold(
+            onSuccess = { queryResult ->
+                if (queryResult.rows.isEmpty()) {
+                    "Table '$tableName' (Sample - 0 rows):\nNo rows in sample or table is empty.\nColumns: ${
+                        queryResult.columnNames.joinToString(", ")
+                    }"
+                } else {
+                    val header = queryResult.columnNames.joinToString(" | ")
+                    val rows = queryResult.rows.take(10).joinToString("\n") { row ->
+                        queryResult.columnNames.joinToString(" | ") { colName ->
+                            (row[colName]?.toString() ?: "NULL").take(30)
+                        }
+                    }
+                    "Table '$tableName' (Sample - ${queryResult.rows.size} rows):\n$header\n$rows"
+                }
+            },
+            onFailure = { error ->
+                "Could not fetch sample for table '$tableName': ${error.message}"
+            }
+        )
     }
 
     private fun resolveFileSample(filePath: String?): String {
@@ -66,6 +139,18 @@ class LlmPromptGenerationService(
             .replace("{{importMode}}", config.importMode.name.lowercase())
             .replace("{{fileSample}}", fileSample)
             .replace("{{additionalInfo}}", config.llmAdditionalInfo)
+    }
+
+    private fun createLineMarkerPrompt(config: LineMarkerConfig, tableSamples: String, template: String): String {
+        return template
+            .replace("{{llmDescription}}", config.llmDescription)
+            .replace("{{tableSamples}}", tableSamples)
+    }
+
+    private fun createChartPrompt(config: ChartConfig, tableSamples: String, template: String): String {
+        return template
+            .replace("{{llmDescription}}", config.llmDescription)
+            .replace("{{tableSamples}}", tableSamples)
     }
 
     private suspend fun loadTemplate(fileName: String): String {

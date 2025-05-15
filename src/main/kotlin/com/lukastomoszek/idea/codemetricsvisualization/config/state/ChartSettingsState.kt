@@ -9,11 +9,16 @@ object DefaultChartConfig {
         UNION ALL SELECT 'CategoryB' AS label, 20 AS value
         UNION ALL SELECT 'CategoryC' AS label, 15 AS value;
     """.trimIndent()
+    const val LLM_DESCRIPTION = ""
+    val LLM_RELEVANT_TABLE_NAMES: List<String> = emptyList()
 }
 
 data class ChartConfig(
     override var name: String = DefaultChartConfig.NAME,
-    var sqlTemplate: String = DefaultChartConfig.SQL_TEMPLATE
+    var sqlTemplate: String = DefaultChartConfig.SQL_TEMPLATE,
+    var llmDescription: String = DefaultChartConfig.LLM_DESCRIPTION,
+    @XCollection
+    var llmRelevantTableNames: List<String> = DefaultChartConfig.LLM_RELEVANT_TABLE_NAMES
 ) : NamedConfig
 
 data class ChartSettingsState(

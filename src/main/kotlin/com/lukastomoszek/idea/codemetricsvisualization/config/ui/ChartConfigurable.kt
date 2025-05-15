@@ -16,12 +16,21 @@ class ChartConfigurable(project: Project) :
         commentText = "Define named SQL queries for generating charts in the tool window."
     ) {
 
+    private val llmDescriptionColumn = object : ColumnInfo<ChartConfig, String>("LLM Description") {
+        override fun valueOf(item: ChartConfig): String = item.llmDescription
+    }
+
+    private val llmTablesColumn = object : ColumnInfo<ChartConfig, String>("LLM Tables") {
+        override fun valueOf(item: ChartConfig): String = item.llmRelevantTableNames.joinToString(", ")
+    }
+
     private val sqlColumn = object : ColumnInfo<ChartConfig, String>("SQL Template") {
         override fun valueOf(item: ChartConfig): String = item.sqlTemplate
             .replace(Regex("\\s+"), " ")
     }
 
-    override fun getColumnInfos(): Array<ColumnInfo<ChartConfig, *>> = arrayOf(nameColumn, sqlColumn)
+    override fun getColumnInfos(): Array<ColumnInfo<ChartConfig, *>> =
+        arrayOf(nameColumn, llmDescriptionColumn, llmTablesColumn, sqlColumn)
 
     override fun createNewItem(): ChartConfig = ChartConfig()
 
@@ -46,5 +55,7 @@ class ChartConfigurable(project: Project) :
         ChartSettings.getInstance(project).update(items)
     }
 
-    override fun copyItem(item: ChartConfig): ChartConfig = item.copy()
+    override fun copyItem(item: ChartConfig): ChartConfig = item.copy(
+        llmRelevantTableNames = item.llmRelevantTableNames.toList()
+    )
 }

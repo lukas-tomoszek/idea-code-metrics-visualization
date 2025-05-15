@@ -42,9 +42,6 @@ class DataSourceDialog(
         - If appending, the target table already has columns: timestamp (DATE), status_code (VARCHAR), mapping_path (VARCHAR).
     """.trimIndent()
 
-    private fun JBTextArea.cleanedTextOrNull(): String =
-        text.takeIf { it != placeholder } ?: ""
-
     init {
         title =
             if (config.name == DefaultDataSource.NAME) "Add Data Source Configuration" else "Edit Data Source Configuration"
@@ -145,12 +142,7 @@ class DataSourceDialog(
                 copyLlmButton = JButton("Copy LLM Prompt for SQL Generation").apply {
                     addActionListener {
                         LlmPromptGenerationService.getInstance(project)
-                            .generateDataSourceImportPrompt(
-                                config.copy(
-                                    sql = sqlTextArea.text,
-                                    llmAdditionalInfo = llmAdditionalInfoTextArea.cleanedTextOrNull()
-                                )
-                            )
+                            .generateDataSourceImportPrompt(getUpdatedConfigFromForm())
                     }
                 }
                 cell(copyLlmButton)
@@ -172,9 +164,24 @@ class DataSourceDialog(
         }
     }
 
+    private fun getLlmAdditionalInfoCleaned(): String {
+        return llmAdditionalInfoTextArea.text.takeIf { it != placeholder } ?: ""
+    }
+
+    private fun getUpdatedConfigFromForm(): DataSourceConfig {
+        return config.copy(
+            name = nameField.text,
+            tableName = config.tableName,
+            filePath = filePathField.text,
+            importMode = currentImportMode,
+            llmAdditionalInfo = getLlmAdditionalInfoCleaned(),
+            sql = sqlTextArea.text
+        )
+    }
+
     override fun doOKAction() {
         config.sql = sqlTextArea.text
-        config.llmAdditionalInfo = llmAdditionalInfoTextArea.cleanedTextOrNull()
+        config.llmAdditionalInfo = getLlmAdditionalInfoCleaned()
         super.doOKAction()
     }
 }

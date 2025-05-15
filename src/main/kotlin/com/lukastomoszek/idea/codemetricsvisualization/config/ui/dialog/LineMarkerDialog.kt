@@ -6,6 +6,7 @@ import com.intellij.ui.EnumComboBoxModel
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
+import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.bindText
@@ -13,19 +14,30 @@ import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
+import com.lukastomoszek.idea.codemetricsvisualization.config.service.LlmPromptGenerationService
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.DefaultLineMarkerConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerOperator
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerRule
 import javax.swing.DefaultCellEditor
+import javax.swing.JButton
 import javax.swing.JComponent
 
-class LineMarkerDialog(project: Project, config: LineMarkerConfig, existingLineMarkerNames: List<String>) :
-    AbstractNamedDialog<LineMarkerConfig>(project, config, existingLineMarkerNames) {
+class LineMarkerDialog(
+    private val project: Project,
+    config: LineMarkerConfig,
+    existingLineMarkerNames: List<String>
+) : AbstractNamedDialog<LineMarkerConfig>(project, config, existingLineMarkerNames) {
 
     private lateinit var sqlTextArea: JBTextArea
     private lateinit var rulesTableModel: ListTableModel<LineMarkerRule>
     private val rules = config.lineMarkerRules.map { it.copy() }.toMutableList()
+    private lateinit var llmDescriptionTextArea: JBTextArea
+    private lateinit var llmRelevantTableNamesField: JBTextField
+    private lateinit var selectTablesButton: JButton
+    private lateinit var copyLlmButton: JButton
+
+    private var currentLlmRelevantTableNames: MutableList<String> = config.llmRelevantTableNames.toMutableList()
 
     init {
         title =
@@ -38,6 +50,28 @@ class LineMarkerDialog(project: Project, config: LineMarkerConfig, existingLineM
             text = config.sqlTemplate
             lineWrap = true
             wrapStyleWord = true
+        }
+
+        llmDescriptionTextArea = JBTextArea(3, 70).apply {
+            text = config.llmDescription
+            lineWrap = true
+            wrapStyleWord = true
+        }
+
+        llmRelevantTableNamesField = JBTextField().apply {
+            text = formatTableNamesForDisplay(currentLlmRelevantTableNames)
+            isEditable = false
+        }
+
+        selectTablesButton = JButton("Select Tables...").apply {
+            addActionListener {
+                val dialog = SelectTablesDialog(project, currentLlmRelevantTableNames.toList())
+                if (dialog.showAndGet()) {
+                    currentLlmRelevantTableNames.clear()
+                    currentLlmRelevantTableNames.addAll(dialog.getSelectedTableNames())
+                    llmRelevantTableNamesField.text = formatTableNamesForDisplay(currentLlmRelevantTableNames)
+                }
+            }
         }
 
         val operatorColumn = object : ColumnInfo<LineMarkerRule, LineMarkerOperator>("Operator") {
@@ -105,9 +139,39 @@ class LineMarkerDialog(project: Project, config: LineMarkerConfig, existingLineM
             }
 
             row {
-                label("SQL template:")
+                label("LLM Description:")
+            }
+            row {
+                cell(JBScrollPane(llmDescriptionTextArea))
+                    .align(Align.FILL)
+            }.resizableRow()
+
+            row("LLM Relevant Tables:") {
+                cell(llmRelevantTableNamesField)
+                    .resizableColumn()
+                    .align(AlignX.FILL)
+                cell(selectTablesButton)
             }
 
+            row {
+                copyLlmButton = JButton("Copy LLM Prompt for SQL Generation").apply {
+                    addActionListener {
+                        val currentConfig = getUpdatedConfigFromForm()
+                        LlmPromptGenerationService.getInstance(project)
+                            .generateLineMarkerSqlPrompt(currentConfig)
+                    }
+                }
+                cell(copyLlmButton)
+                    .align(AlignX.FILL)
+                    .comment(
+                        "Copies a prompt with instructions and samples of selected tables to your clipboard for use with an AI tool. Review the content before use, as it may contain private or sensitive data.",
+                        100
+                    )
+            }
+
+            row {
+                label("SQL template:")
+            }
             row {
                 cell(JBScrollPane(sqlTextArea))
                     .align(Align.FILL)
@@ -116,11 +180,24 @@ class LineMarkerDialog(project: Project, config: LineMarkerConfig, existingLineM
             row {
                 label("Rules:")
             }
-
             row {
                 cell(rulesToolbar).align(Align.FILL)
             }.resizableRow()
+
         }
+    }
+
+    private fun formatTableNamesForDisplay(tableNames: List<String>): String {
+        return if (tableNames.isEmpty()) "None selected" else tableNames.joinToString(", ")
+    }
+
+    private fun getUpdatedConfigFromForm(): LineMarkerConfig {
+        return config.copy(
+            name = nameField.text,
+            sqlTemplate = sqlTextArea.text,
+            llmDescription = llmDescriptionTextArea.text,
+            llmRelevantTableNames = currentLlmRelevantTableNames.toList()
+        )
     }
 
     private fun addRule() {
@@ -137,6 +214,8 @@ class LineMarkerDialog(project: Project, config: LineMarkerConfig, existingLineM
 
     override fun doOKAction() {
         config.sqlTemplate = sqlTextArea.text
+        config.llmDescription = llmDescriptionTextArea.text
+        config.llmRelevantTableNames = currentLlmRelevantTableNames.toList()
         config.lineMarkerRules = rules
         super.doOKAction()
     }
