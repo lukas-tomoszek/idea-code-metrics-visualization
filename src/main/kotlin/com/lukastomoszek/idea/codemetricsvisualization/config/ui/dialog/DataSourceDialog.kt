@@ -6,9 +6,11 @@ import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.builder.*
+import com.lukastomoszek.idea.codemetricsvisualization.config.service.LlmPromptGenerationService
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.DataSourceConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.DefaultDataSource
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.ImportMode
+import javax.swing.JButton
 import javax.swing.JComponent
 
 class DataSourceDialog(
@@ -19,6 +21,7 @@ class DataSourceDialog(
 
     private lateinit var filePathField: TextFieldWithBrowseButton
     private lateinit var sqlTextArea: JBTextArea
+    private lateinit var copyLlmButton: JButton
     private var currentImportMode: ImportMode = config.importMode
 
     init {
@@ -28,7 +31,7 @@ class DataSourceDialog(
     }
 
     override fun createCenterPanel(): JComponent {
-        sqlTextArea = JBTextArea(20, 100).apply {
+        sqlTextArea = JBTextArea(15, 100).apply {
             text = config.sql
             lineWrap = true
             wrapStyleWord = true
@@ -39,7 +42,6 @@ class DataSourceDialog(
                 project,
                 FileChooserDescriptorFactory.createSingleFileOrFolderDescriptor()
             )
-            text = config.filePath
         }
 
         return panel {
@@ -84,6 +86,22 @@ class DataSourceDialog(
                     }
                 }
             }.bind(config::importMode)
+
+
+            row {
+                copyLlmButton = JButton("Copy LLM Prompt for SQL Generation").apply {
+                    addActionListener {
+                        LlmPromptGenerationService.getInstance(project)
+                            .generateDataSourceImportPrompt(config.copy(sql = sqlTextArea.text))
+                    }
+                }
+                cell(copyLlmButton)
+                    .align(AlignX.FILL)
+                    .comment(
+                        "Copies a prompt with instructions and a sample of the selected file to your clipboard for use with an AI tool. Review the content before use, as it may contain private or sensitive data.",
+                        100
+                    )
+            }
 
             row {
                 label("Import SQL:")

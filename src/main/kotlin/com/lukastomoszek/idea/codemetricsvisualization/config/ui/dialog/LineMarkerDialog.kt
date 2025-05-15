@@ -97,10 +97,11 @@ class LineMarkerDialog(project: Project, config: LineMarkerConfig, existingLineM
 
         return panel {
             row("Name:") {
-                textField()
+                nameField = textField()
                     .bindText(config::name)
                     .validationOnInput { validateName(it.text) }
                     .align(AlignX.FILL)
+                    .component
             }
 
             row {
