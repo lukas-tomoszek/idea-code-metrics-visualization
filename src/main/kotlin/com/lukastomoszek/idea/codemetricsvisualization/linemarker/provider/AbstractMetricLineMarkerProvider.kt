@@ -88,22 +88,13 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
         originalElement: T,
         configs: List<LineMarkerConfig>
     ): List<LineMarkerInfo<*>> {
-
-        if (!originalElement.isValid) return emptyList()
-        val anchorElement = getAnchorElement(originalElement)
-        if (anchorElement == null || !anchorElement.isValid) return emptyList()
+        val anchorElement = getAnchorElement(originalElement) ?: return emptyList()
         val contextInfo = PsiContextResolver.getContextInfoFromPsi(originalElement)
-        val originalElementTextForError = originalElement.text ?: "invalid element"
+        val anchorTextRange = readAction {
+            if (anchorElement.isValid) anchorElement.textRange else null
+        } ?: return emptyList()
 
         val elementMarkers = mutableListOf<LineMarkerInfo<*>>()
-
-        if (!readAction { anchorElement.isValid }) {
-            return emptyList()
-        }
-
-        val anchorTextRange = readAction {
-            anchorElement.textRange
-        }
 
         configs.forEach { config ->
             try {
@@ -138,7 +129,6 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
                             },
                             onFailure = { error ->
                                 if (error is ControlFlowException || error is CancellationException) throw error
-                                if (!readAction { anchorElement.isValid }) return@forEach
                                 val errorMessage = "DB Error: ${error.message?.take(100)} SQL: ${finalSql.take(100)}"
                                 thisLogger().warn("$errorMessage...", error)
                                 addErrorMarker(anchorElement, anchorTextRange, config, errorMessage, elementMarkers)
@@ -147,7 +137,6 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
                     },
                     onFailure = { error ->
                         if (error is ControlFlowException || error is CancellationException) throw error
-                        if (!readAction { anchorElement.isValid }) return@forEach
                         val errorMessage = "SQL build failed for '${config.name}': ${error.message?.take(100)}"
                         thisLogger().trace("$errorMessage...")
                         addErrorMarker(anchorElement, anchorTextRange, config, errorMessage, elementMarkers)
@@ -155,7 +144,7 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
                 )
             } catch (e: Exception) {
                 if (e is ControlFlowException || e is CancellationException) throw e
-                if (!readAction { anchorElement.isValid }) return@forEach
+                val originalElementTextForError = readAction { originalElement.text } ?: "invalid element"
                 val errorMessage =
                     "Error for element '$originalElementTextForError', config '${config.name}': ${e.message?.take(100)}"
                 thisLogger().error("$errorMessage...", e)
@@ -179,13 +168,13 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
     }
 
     protected suspend fun addErrorMarker(
-        anchorElement: PsiElement,
+        anchorElement: PsiElement?,
         anchorTextRange: TextRange,
         config: LineMarkerConfig,
         errorMessage: String,
         elementMarkers: MutableList<in LineMarkerInfo<*>>
     ) {
-        if (!readAction { anchorElement.isValid }) return
+        if (anchorElement == null || !readAction { anchorElement.isValid }) return
 
         val errorIcon: Icon = IconLoader.getIcon("/icons/breakpointObsolete.svg", this.javaClass)
         val tooltipProvider = { _: PsiElement? ->
