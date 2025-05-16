@@ -1,25 +1,51 @@
 package com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.service
 
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.ChartSettings
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.ChartConfig
+import com.lukastomoszek.idea.codemetricsvisualization.context.PsiContextResolver
+import com.lukastomoszek.idea.codemetricsvisualization.context.PsiUtils
+import com.lukastomoszek.idea.codemetricsvisualization.context.model.ContextInfo
 import com.lukastomoszek.idea.codemetricsvisualization.db.ContextAwareQueryBuilder
 import com.lukastomoszek.idea.codemetricsvisualization.db.DuckDbService
 import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.model.ChartRequest
 import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.model.ChartResponse
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 
 @Service(Service.Level.PROJECT)
 class ChartService(
     private val project: Project,
     private val cs: CoroutineScope
 ) {
+    private var updateJob: Job? = null
+
+    fun scheduleContextUpdate(onContextUpdated: suspend (ContextInfo) -> Unit) {
+        updateJob?.cancel()
+        updateJob = cs.launch {
+            delay(300)
+            if (project.isDisposed) return@launch
+
+            val editor = readAction {
+                FileEditorManager.getInstance(project).selectedTextEditor
+            } ?: return@launch
+
+            if (editor.isDisposed) return@launch
+            val offset = readAction { editor.caretModel.offset }
+
+            val psiFile = PsiUtils.getPsiFile(editor, project) ?: return@launch
+            val psiElement = PsiUtils.findPsiElementAtOffset(psiFile, offset) ?: psiFile
+            val contextInfo = psiElement.let { PsiContextResolver.getContextInfoFromPsi(it) }
+
+            withContext(Dispatchers.EDT) {
+                onContextUpdated(contextInfo)
+            }
+        }
+    }
 
     fun getAvailableChartConfigs(): List<ChartConfig> {
         return ChartSettings.getInstance(project).state.configs.toList()

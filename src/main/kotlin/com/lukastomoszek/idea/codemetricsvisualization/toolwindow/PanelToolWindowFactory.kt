@@ -17,6 +17,7 @@ class PanelToolWindowFactory : ToolWindowFactory, DumbAware {
 
         val chartViewerPanel = ChartViewerPanel(project)
         val chartContent = contentFactory.createContent(chartViewerPanel, "Chart", false)
+        chartContent.setDisposer(chartViewerPanel)
         toolWindow.contentManager.addContent(chartContent)
 
         val dbViewerPanel = DbViewerPanel(project)

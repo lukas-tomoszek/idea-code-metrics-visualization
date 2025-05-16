@@ -13,11 +13,9 @@ import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.controll
 import org.knowm.xchart.CategoryChart
 import org.knowm.xchart.XChartPanel
 import java.awt.BorderLayout
-import java.time.ZoneId
-import java.util.*
 import kotlin.coroutines.cancellation.CancellationException
 
-class ChartViewerPanel(private val project: Project) : SimpleToolWindowPanel(true, true), Disposable {
+class ChartViewerPanel(project: Project) : SimpleToolWindowPanel(true, true), Disposable {
 
     private var xChartPanel: XChartPanel<*>? = null
     private val chartPanelContainer = JBUI.Panels.simplePanel()
@@ -42,16 +40,11 @@ class ChartViewerPanel(private val project: Project) : SimpleToolWindowPanel(tru
         controller.initialize()
     }
 
-    fun updateChart(
-        queryResult: QueryResult,
-        chartName: String,
-    ) {
+    fun updateChart(queryResult: QueryResult, chartName: String) {
         clearChartPanel()
 
         val (labels, values) = processQueryResult(queryResult)
-
-        if (labels.isEmpty() || values.isEmpty() || (values.getOrNull(0)?.isEmpty() == true)
-        ) {
+        if (labels.isEmpty() || values.isEmpty() || (values.firstOrNull()?.isEmpty() == true)) {
             statusLabel.text = "No data to display for '$chartName'."
             return
         }
@@ -75,39 +68,22 @@ class ChartViewerPanel(private val project: Project) : SimpleToolWindowPanel(tru
         }
     }
 
-    private fun processQueryResult(
-        queryResult: QueryResult
-    ): Pair<List<Any>, List<List<Number>>> {
+    private fun processQueryResult(queryResult: QueryResult): Pair<List<Any>, List<List<Number>>> {
         if (queryResult.rows.isEmpty() || queryResult.columnNames.size < 2) {
             return Pair(emptyList(), emptyList())
         }
 
         val labelCol = queryResult.columnNames[0]
         val valueCol = queryResult.columnNames[1]
-        val labels = queryResult.rows.map { row ->
-            convertToDateCompatible(row[labelCol])
-        }
 
+        val labels = queryResult.rows.map { row ->
+            ChartXChartConfigurator.convertToDateCompatible(row[labelCol])
+        }
         val values: List<List<Number>> = listOf(queryResult.rows.map {
             (it[valueCol] as? Number)?.toDouble() ?: 0.0
         })
 
         return Pair(labels, values)
-    }
-
-    private fun convertToDateCompatible(value: Any?): Any = when (value) {
-        is java.sql.Timestamp,
-        is java.sql.Date,
-        is java.sql.Time -> Date(value.time)
-
-        is java.time.LocalDate -> Date.from(value.atStartOfDay(ZoneId.systemDefault()).toInstant())
-        is java.time.LocalDateTime -> Date.from(value.atZone(ZoneId.systemDefault()).toInstant())
-        is java.time.OffsetDateTime -> Date.from(value.toInstant())
-        is java.time.LocalTime -> Date.from(
-            value.atDate(java.time.LocalDate.of(1970, 1, 1)).atZone(ZoneId.systemDefault()).toInstant()
-        )
-
-        else -> value ?: "N/A"
     }
 
     fun clearChartPanel() {
@@ -127,7 +103,5 @@ class ChartViewerPanel(private val project: Project) : SimpleToolWindowPanel(tru
         controller.loadChartConfigurations()
     }
 
-    override fun dispose() {
-        controller.dispose()
-    }
+    override fun dispose() {}
 }

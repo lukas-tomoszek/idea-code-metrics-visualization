@@ -4,9 +4,9 @@ import com.intellij.ui.JBColor
 import org.knowm.xchart.CategoryChart
 import org.knowm.xchart.style.AxesChartStyler
 import org.knowm.xchart.style.Styler
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.ZoneId
+import java.sql.Time
+import java.sql.Timestamp
+import java.time.*
 import java.util.*
 
 object ChartXChartConfigurator {
@@ -58,5 +58,20 @@ object ChartXChartConfigurator {
             allDateOnly -> "yyyy-MM-dd"
             else -> "MM-dd HH:mm"
         }
+    }
+
+    fun convertToDateCompatible(value: Any?): Any = when (value) {
+        is Timestamp,
+        is java.sql.Date,
+        is Time -> Date(value.time)
+
+        is LocalDate -> Date.from(value.atStartOfDay(ZoneId.systemDefault()).toInstant())
+        is LocalDateTime -> Date.from(value.atZone(ZoneId.systemDefault()).toInstant())
+        is OffsetDateTime -> Date.from(value.toInstant())
+        is LocalTime -> Date.from(
+            value.atDate(LocalDate.of(1970, 1, 1)).atZone(ZoneId.systemDefault()).toInstant()
+        )
+
+        else -> value ?: "N/A"
     }
 }

@@ -10,7 +10,6 @@ import com.intellij.ui.SimpleListCellRenderer
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
-import com.intellij.ui.layout.ComponentPredicate
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.ChartConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.ui.ChartConfigurable
 import javax.swing.*
@@ -22,21 +21,16 @@ class ChartControlsProvider(
     val chartConfigsModel: CollectionComboBoxModel<ChartConfig>,
     val methodFilterModel: CollectionComboBoxModel<String>,
     val featureFilterModel: CollectionComboBoxModel<String>,
-    val onChartConfigSelected: (ChartConfig?) -> Unit,
-    val onMethodFilterSelected: (String?) -> Unit,
-    val onFeatureFilterSelected: (String?) -> Unit,
-    val onChartDropdownOpening: () -> Unit,
-    val onMethodLockToggled: (Boolean) -> Unit,
-    val onFeatureLockToggled: (Boolean) -> Unit,
-    val isMethodFilterEnabled: () -> Boolean,
-    val isFeatureFilterEnabled: () -> Boolean
+    val onChartConfigSelected: () -> Unit,
+    val onMethodFilterSelected: () -> Unit,
+    val onFeatureFilterSelected: () -> Unit,
+    val onChartDropdownOpening: () -> Unit
 ) {
-    lateinit var chartConfigComboBox: ComboBox<ChartConfig?>
+    private lateinit var chartConfigComboBox: ComboBox<ChartConfig?>
     lateinit var methodFilterComboBox: ComboBox<String>
     lateinit var featureFilterComboBox: ComboBox<String>
-    lateinit var openChartSettingsButton: JButton
-    lateinit var lockMethodButton: JToggleButton
-    lateinit var lockFeatureButton: JToggleButton
+    private lateinit var openChartSettingsButton: JButton
+    private lateinit var contextUpdateLockedButton: JToggleButton
 
     companion object {
         const val ALL_METHODS_OPTION = "All Methods"
@@ -60,7 +54,7 @@ class ChartControlsProvider(
             }
             addItemListener { e ->
                 if (e.stateChange == java.awt.event.ItemEvent.SELECTED) {
-                    onChartConfigSelected(selectedItem as? ChartConfig)
+                    onChartConfigSelected()
                 }
             }
             addPopupMenuListener(object : PopupMenuListener {
@@ -77,7 +71,7 @@ class ChartControlsProvider(
             toolTipText = "Filter by method from current file"
             addItemListener { e ->
                 if (e.stateChange == java.awt.event.ItemEvent.SELECTED) {
-                    onMethodFilterSelected(selectedItem as? String)
+                    onMethodFilterSelected()
                 }
             }
         }
@@ -86,7 +80,7 @@ class ChartControlsProvider(
             toolTipText = "Filter by feature from current file"
             addItemListener { e ->
                 if (e.stateChange == java.awt.event.ItemEvent.SELECTED) {
-                    onFeatureFilterSelected(selectedItem as? String)
+                    onFeatureFilterSelected()
                 }
             }
         }
@@ -98,19 +92,10 @@ class ChartControlsProvider(
             }
         }
 
-        lockMethodButton = JToggleButton(UNLOCKED_ICON).apply {
-            toolTipText = "Lock Method Filter (Unlock to follow caret)"
+        contextUpdateLockedButton = JToggleButton(UNLOCKED_ICON).apply {
+            toolTipText = "Lock Context Update (Unlock to follow caret)"
             addActionListener {
-                onMethodLockToggled(isSelected)
-                updateLockButton(this, isSelected)
-            }
-        }
-
-        lockFeatureButton = JToggleButton(UNLOCKED_ICON).apply {
-            toolTipText = "Lock Feature Filter (Unlock to follow caret)"
-            addActionListener {
-                onFeatureLockToggled(isSelected)
-                updateLockButton(this, isSelected)
+                updateIsLockedButtonState(isSelected)
             }
         }
 
@@ -118,26 +103,65 @@ class ChartControlsProvider(
             row("Chart:") {
                 cell(chartConfigComboBox).resizableColumn().align(AlignX.FILL)
                 cell(openChartSettingsButton)
+                cell(contextUpdateLockedButton)
             }
             row("Method:") {
                 cell(methodFilterComboBox).resizableColumn().align(AlignX.FILL)
-                    .enabledIf(ComponentPredicate.fromValue(isMethodFilterEnabled()))
-                cell(lockMethodButton)
-                    .enabledIf(ComponentPredicate.fromValue(isMethodFilterEnabled()))
             }
             row("Feature:") {
                 cell(featureFilterComboBox).resizableColumn().align(AlignX.FILL)
-                    .enabledIf(ComponentPredicate.fromValue(isFeatureFilterEnabled()))
-                cell(lockFeatureButton)
-                    .enabledIf(ComponentPredicate.fromValue(isFeatureFilterEnabled()))
             }
         }
     }
 
-    fun updateLockButton(button: JToggleButton, isLocked: Boolean) {
-        button.icon = if (isLocked) LOCKED_ICON else UNLOCKED_ICON
-        button.toolTipText = if (isLocked) "Filter Locked (Click to Unlock)" else "Filter Unlocked (Click to Lock)"
-        button.isSelected = isLocked
+    fun getSelectedChartConfig(): ChartConfig? = chartConfigComboBox.selectedItem as? ChartConfig?
+    fun getSelectedMethodFilter(): String? = methodFilterComboBox.selectedItem as? String
+    fun getSelectedFeatureFilter(): String? = featureFilterComboBox.selectedItem as? String
+    fun getMethodsFqnsInFile(): List<String> = methodFilterModel.items.filter { it != ALL_METHODS_OPTION }
+    fun getFeatureNamesInFile(): List<String> = methodFilterModel.items.filter { it != ALL_FEATURES_OPTION }
+    fun isContextUpdateLocked(): Boolean = contextUpdateLockedButton.isSelected
+
+    fun updateChartConfigComboBox(targetSelection: ChartConfig?, configs: List<ChartConfig>) {
+        if (chartConfigsModel.items != configs) {
+            chartConfigsModel.removeAll()
+            chartConfigsModel.add(configs)
+        }
+
+        chartConfigComboBox.selectedItem =
+            if (chartConfigsModel.items.contains(targetSelection)) targetSelection else chartConfigsModel.items.firstOrNull()
+    }
+
+    fun updateMethodFilterModel(targetSelection: String?, methodsInFile: List<String> = emptyList()) {
+        val withAllOption = methodsInFile
+            .let { if (ALL_METHODS_OPTION in it) it else listOf(ALL_METHODS_OPTION) + it }
+
+        if (methodFilterModel.items != withAllOption) {
+            methodFilterModel.removeAll()
+            methodFilterModel.add(withAllOption)
+        }
+
+        methodFilterComboBox.selectedItem =
+            targetSelection?.takeIf { methodFilterModel.items.contains(it) } ?: ALL_METHODS_OPTION
+    }
+
+    fun updateFeatureFilterModel(targetSelection: String?, featuresInFile: List<String> = emptyList()) {
+        val withAllOption = featuresInFile
+            .let { if (ALL_FEATURES_OPTION in it) it else listOf(ALL_FEATURES_OPTION) + it }
+
+        if (featureFilterModel.items != withAllOption) {
+            featureFilterModel.removeAll()
+            featureFilterModel.add(withAllOption)
+        }
+
+        featureFilterComboBox.selectedItem =
+            targetSelection?.takeIf { featureFilterModel.items.contains(it) } ?: ALL_FEATURES_OPTION
+    }
+
+    fun updateIsLockedButtonState(isLocked: Boolean) {
+        contextUpdateLockedButton.isSelected = isLocked
+        contextUpdateLockedButton.icon = if (isLocked) LOCKED_ICON else UNLOCKED_ICON
+        contextUpdateLockedButton.toolTipText =
+            if (isLocked) "Context Update Locked (Click to Unlock)" else "Context Update Unlocked (Click to Lock)"
     }
 
     fun createStatusLabel(): JBLabel = JBLabel("Initializing...", JBLabel.CENTER)

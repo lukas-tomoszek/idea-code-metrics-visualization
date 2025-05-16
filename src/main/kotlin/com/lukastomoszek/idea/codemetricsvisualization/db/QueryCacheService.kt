@@ -11,6 +11,7 @@ class QueryCacheService {
     private val cache = ConcurrentHashMap<String, Result<QueryResult>>()
 
     fun get(sql: String): Result<QueryResult>? {
+        thisLogger().debug("Cache hit SQL: '$sql' value: ${cache[sql]?.getOrNull()}")
         return cache[sql]
     }
 

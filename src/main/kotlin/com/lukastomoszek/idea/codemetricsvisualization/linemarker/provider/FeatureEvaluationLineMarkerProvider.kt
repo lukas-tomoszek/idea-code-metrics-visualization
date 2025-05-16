@@ -7,15 +7,12 @@ import com.intellij.psi.PsiMethodCallExpression
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.FeatureEvaluatorSettings
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerConfig
 import com.lukastomoszek.idea.codemetricsvisualization.context.PsiUtils
-import com.lukastomoszek.idea.codemetricsvisualization.db.ContextAwareQueryBuilder
 
 class FeatureEvaluationLineMarkerProvider :
     AbstractMetricLineMarkerProvider<PsiMethodCallExpression>(PsiMethodCallExpression::class.java) {
 
     override fun filterEnabledConfigs(allEnabledConfigs: List<LineMarkerConfig>): List<LineMarkerConfig> {
-        return allEnabledConfigs.filter {
-            it.sqlTemplate.contains(ContextAwareQueryBuilder.FEATURE_NAME_PLACEHOLDER)
-        }
+        return allEnabledConfigs.filter { it.hasFeatureNamePlaceholder() }
     }
 
     override suspend fun preFilterElement(element: PsiMethodCallExpression, project: Project): Boolean {
