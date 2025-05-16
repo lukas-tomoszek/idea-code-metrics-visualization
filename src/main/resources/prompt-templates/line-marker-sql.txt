@@ -1,0 +1,31 @@
+# Generate DuckDB SQL for Line Marker
+
+Description from User:
+{{llmDescription}}
+
+---
+Task:
+Generate a DuckDB SQL query suitable for a line marker.
+The query should:
+1. Return a single numerical value.
+2. Use placeholders (If relevant):
+   - `#method_fqn#`: Fully qualified name of the method the marker is on.
+   - `#feature_name#`: Feature flag key being evaluated near the marker.
+   - `#method_fqns_in_file#`: A csv of all method FQNs in the current file (e.g., `'com.example.A.method1', 'com.example.A.method2'`).
+   - `#feature_names_in_file#`: A csv of all feature names in the current file (e.g., `'feat_a', 'feat_b'`).
+   - Examples:
+     - `SELECT COUNT(*) FROM my_logs WHERE method_fqn = '#method_fqn#' AND event = 'ERROR';`
+     - `SELECT AVG(latency_ms) FROM performance_metrics WHERE method_fqn = '#method_fqn#' AND feature_flag = '#feature_name#';`
+     - `SELECT
+          COUNT(*) FILTER (WHERE method_name = '#method_fqn#') * 1.0 /
+          NULLIF(COUNT(*), 1)
+        FROM log_entries_100
+        WHERE method_name IN (#method_fqns_in_file#);`
+3. Refer to the table samples below for available columns and data structure.
+
+_No extra commentary—SQL only._
+
+---
+Available Table Samples (Top 10 rows using `USING SAMPLE 10 ROWS`):
+
+{{tableSamples}}

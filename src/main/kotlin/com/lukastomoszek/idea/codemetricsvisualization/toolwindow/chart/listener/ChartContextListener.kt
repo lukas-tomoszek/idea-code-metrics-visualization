@@ -10,10 +10,9 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.project.Project
-import com.lukastomoszek.idea.codemetricsvisualization.context.EditorFileContextService
 import com.lukastomoszek.idea.codemetricsvisualization.context.PsiContextResolver
 import com.lukastomoszek.idea.codemetricsvisualization.context.PsiUtils
-import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.model.EditorChartContext
+import com.lukastomoszek.idea.codemetricsvisualization.context.model.ContextInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
@@ -23,7 +22,7 @@ import java.util.concurrent.TimeUnit
 class ChartContextListener(
     private val project: Project,
     private val cs: CoroutineScope,
-    private val onContextUpdated: (EditorChartContext?) -> Unit
+    private val onContextUpdated: (ContextInfo) -> Unit
 ) : Disposable {
 
     private var scheduledUpdate: ScheduledFuture<*>? = null
@@ -32,7 +31,6 @@ class ChartContextListener(
         thread.isDaemon = true
         thread
     }
-    private val editorFileContextService = EditorFileContextService.getInstance(project)
 
     private val caretListener = object : CaretListener {
         override fun caretPositionChanged(event: CaretEvent) = scheduleContextUpdate(event.editor, event.caret?.offset)
@@ -87,16 +85,9 @@ class ChartContextListener(
     }
 
     private fun scheduleContextUpdate(editor: Editor?, offset: Int?) {
-        val currentEditor = editor ?: FileEditorManager.getInstance(project).selectedTextEditor
-        if (project.isDisposed || currentEditor == null) {
-            if (currentEditor == null) {
-                cs.launch {
-                    val (methods, features) = editorFileContextService.getCurrentFileMethodsAndFeatures(null)
-                    onContextUpdated(EditorChartContext(null, methods, features))
-                }
-            }
-            return
-        }
+        val currentEditor = editor ?: FileEditorManager.getInstance(project).selectedTextEditor ?: return
+
+        if (project.isDisposed) return
 
         val currentOffset = offset ?: currentEditor.caretModel.offset
         val file = FileDocumentManager.getInstance().getFile(currentEditor.document) ?: return
@@ -107,13 +98,11 @@ class ChartContextListener(
             ApplicationManager.getApplication().invokeLater {
                 if (project.isDisposed || currentEditor.isDisposed) return@invokeLater
                 cs.launch {
-                    val focusedContext = PsiUtils.findPsiElementAtOffset(project, currentEditor, currentOffset)?.let {
-                        PsiContextResolver.getContextInfoFromPsi(it)
-                    }
-                    val (allMethods, allFeatures) = editorFileContextService.getCurrentFileMethodsAndFeatures(
-                        currentEditor
-                    )
-                    onContextUpdated(EditorChartContext(focusedContext, allMethods, allFeatures))
+                    val contextInfo =
+                        PsiUtils.findPsiElementAtOffset(project, currentEditor, currentOffset)?.let {
+                            PsiContextResolver.getContextInfoFromPsi(it)
+                        }
+                    onContextUpdated(contextInfo ?: ContextInfo(null, null, null, null))
                 }
             }
         }, 300, TimeUnit.MILLISECONDS)

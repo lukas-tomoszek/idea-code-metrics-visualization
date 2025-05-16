@@ -48,7 +48,7 @@ class LlmPromptGenerationService(
         cs.launch {
             val prompt = runCatching {
                 val tableSamples = fetchTableSamples(config.llmRelevantTableNames)
-                val template = loadTemplate("linemarker-sql.txt")
+                val template = loadTemplate("line-marker-sql.txt")
                 createLineMarkerPrompt(config, tableSamples, template)
             }.getOrElse { e ->
                 if (e is ControlFlowException || e is CancellationException) throw e
@@ -156,7 +156,7 @@ class LlmPromptGenerationService(
     private suspend fun loadTemplate(fileName: String): String {
         val path = "$PROMPT_TEMPLATES_BASE_PATH$fileName"
         val stream = LlmPromptGenerationService::class.java.getResourceAsStream(path)
-            ?: throw IOException("Template '$fileName' not found at '$path'")
+                     ?: throw IOException("Template '$fileName' not found at '$path'")
         return withContext(Dispatchers.IO) {
             stream.use { it.readAllBytes().toString(StandardCharsets.UTF_8) }
         }

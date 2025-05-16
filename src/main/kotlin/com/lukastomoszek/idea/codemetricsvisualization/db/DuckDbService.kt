@@ -116,7 +116,8 @@ class DuckDbService(private val project: Project) {
         return runCatching {
             getConnection(readOnly = true).use { conn ->
                 conn.createStatement().use { stmt ->
-                    thisLogger().debug("Executing read SQL: $sql")
+                    thisLogger().debug("Executing read SQL: $sql (timeout: $QUERY_TIMEOUT_SECONDS sec)")
+                    stmt.queryTimeout = QUERY_TIMEOUT_SECONDS
                     stmt.executeQuery(sql).use { rs ->
                         val metaData: ResultSetMetaData = rs.metaData
                         val columnCount = metaData.columnCount
@@ -148,6 +149,8 @@ class DuckDbService(private val project: Project) {
     }
 
     companion object {
+        const val QUERY_TIMEOUT_SECONDS = 10
+
         fun getInstance(project: Project): DuckDbService =
             project.getService(DuckDbService::class.java)
     }

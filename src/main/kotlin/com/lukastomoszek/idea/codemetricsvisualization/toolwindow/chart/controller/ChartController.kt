@@ -11,7 +11,6 @@ import com.lukastomoszek.idea.codemetricsvisualization.db.ContextAwareQueryBuild
 import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.listener.ChartContextListener
 import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.model.ChartControlsState
 import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.model.ChartRequest
-import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.model.EditorChartContext
 import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.model.FilterLockManager
 import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.service.ChartService
 import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.ui.ChartControlsProvider
@@ -37,7 +36,7 @@ class ChartController(
     private val featureFilterModel = CollectionComboBoxModel<String>()
 
     private var controlsState = ChartControlsState()
-    private var lastEditorChartContext: EditorChartContext? = null
+    private var currentEditorContext: ContextInfo = ContextInfo(null, null, null, null)
 
     init {
         controlsProvider = ChartControlsProvider(
@@ -95,12 +94,12 @@ class ChartController(
 
     private fun isMethodFilterApplicable(): Boolean {
         return controlsState.currentChartConfig?.sqlTemplate?.contains(ContextAwareQueryBuilder.METHOD_FQN_PLACEHOLDER)
-            ?: false
+               ?: false
     }
 
     private fun isFeatureFilterApplicable(): Boolean {
         return controlsState.currentChartConfig?.sqlTemplate?.contains(ContextAwareQueryBuilder.FEATURE_NAME_PLACEHOLDER)
-            ?: false
+               ?: false
     }
 
     private fun resetFiltersBasedOnConfig() {
@@ -121,27 +120,26 @@ class ChartController(
         )
     }
 
-    private fun handleContextUpdate(editorChartContext: EditorChartContext?) {
-        lastEditorChartContext = editorChartContext
+    private fun handleContextUpdate(editorContext: ContextInfo) {
+        currentEditorContext = editorContext
 
         var newMethodFilter = controlsState.currentMethodFilter
         var newFeatureFilter = controlsState.currentFeatureFilter
 
-        val context = lastEditorChartContext
-        val methodsInFile =
-            listOf(ChartControlsProvider.ALL_METHODS_OPTION) + (context?.allMethodsInFile ?: emptyList())
-        val featuresInFile =
-            listOf(ChartControlsProvider.ALL_FEATURES_OPTION) + (context?.allFeaturesInFile ?: emptyList())
+        val methodsInFileForDropdown =
+            listOf(ChartControlsProvider.ALL_METHODS_OPTION) + (editorContext.allMethodsInFile ?: emptyList())
+        val featuresInFileForDropdown =
+            listOf(ChartControlsProvider.ALL_FEATURES_OPTION) + (editorContext.allFeaturesInFile ?: emptyList())
 
         if (isMethodFilterApplicable() && !filterLockManager.isMethodFilterLocked) {
-            val focusedMethod = context?.focusedContext?.methodFqn ?: ChartControlsProvider.ALL_METHODS_OPTION
+            val currentFocusedMethod = editorContext.methodFqn ?: ChartControlsProvider.ALL_METHODS_OPTION
             newMethodFilter =
-                if (methodsInFile.contains(focusedMethod)) focusedMethod else ChartControlsProvider.ALL_METHODS_OPTION
+                if (methodsInFileForDropdown.contains(currentFocusedMethod)) currentFocusedMethod else ChartControlsProvider.ALL_METHODS_OPTION
         }
         if (isFeatureFilterApplicable() && !filterLockManager.isFeatureFilterLocked) {
-            val focusedFeature = context?.focusedContext?.featureName ?: ChartControlsProvider.ALL_FEATURES_OPTION
+            val currentFocusedFeature = editorContext.featureName ?: ChartControlsProvider.ALL_FEATURES_OPTION
             newFeatureFilter =
-                if (featuresInFile.contains(focusedFeature)) focusedFeature else ChartControlsProvider.ALL_FEATURES_OPTION
+                if (featuresInFileForDropdown.contains(currentFocusedFeature)) currentFocusedFeature else ChartControlsProvider.ALL_FEATURES_OPTION
         }
         controlsState =
             controlsState.copy(currentMethodFilter = newMethodFilter, currentFeatureFilter = newFeatureFilter)
@@ -152,37 +150,46 @@ class ChartController(
         controllerScope.launch {
             withContext(Dispatchers.EDT) {
                 if (project.isDisposed) return@withContext
-                val context = lastEditorChartContext
 
                 if (!filterLockManager.isMethodFilterLocked) {
-                    val methodsInFile =
-                        listOf(ChartControlsProvider.ALL_METHODS_OPTION) + (context?.allMethodsInFile ?: emptyList())
+                    val methodsInFileForDropdown =
+                        listOf(ChartControlsProvider.ALL_METHODS_OPTION) + (currentEditorContext.allMethodsInFile
+                                                                            ?: emptyList())
                     val updatedMethodFilter =
-                        chartUIManager.updateMethodFilterModel(methodsInFile, controlsState.currentMethodFilter)
+                        chartUIManager.updateMethodFilterModel(
+                            methodsInFileForDropdown,
+                            controlsState.currentMethodFilter
+                        )
                     controlsState = controlsState.copy(
                         currentMethodFilter = updatedMethodFilter,
                     )
-                    chartUIManager.updateControlsVisualState(
-                        controlsState.currentChartConfig,
-                        filterLockManager.isMethodFilterLocked,
-                        filterLockManager.isFeatureFilterLocked
-                    )
                 }
+                chartUIManager.updateControlsVisualState(
+                    controlsState.currentChartConfig,
+                    filterLockManager.isMethodFilterLocked,
+                    filterLockManager.isFeatureFilterLocked
+                )
+
 
                 if (!filterLockManager.isFeatureFilterLocked) {
-                    val featuresInFile =
-                        listOf(ChartControlsProvider.ALL_FEATURES_OPTION) + (context?.allFeaturesInFile ?: emptyList())
+                    val featuresInFileForDropdown =
+                        listOf(ChartControlsProvider.ALL_FEATURES_OPTION) + (currentEditorContext.allFeaturesInFile
+                                                                             ?: emptyList())
                     val updatedFeatureFilter =
-                        chartUIManager.updateFeatureFilterModel(featuresInFile, controlsState.currentFeatureFilter)
+                        chartUIManager.updateFeatureFilterModel(
+                            featuresInFileForDropdown,
+                            controlsState.currentFeatureFilter
+                        )
                     controlsState = controlsState.copy(
                         currentFeatureFilter = updatedFeatureFilter
                     )
-                    chartUIManager.synchronizeComboBoxSelections(
-                        controlsState.currentChartConfig,
-                        controlsState.currentMethodFilter,
-                        controlsState.currentFeatureFilter
-                    )
                 }
+                chartUIManager.synchronizeComboBoxSelections(
+                    controlsState.currentChartConfig,
+                    controlsState.currentMethodFilter,
+                    controlsState.currentFeatureFilter
+                )
+
 
                 fetchAndDisplayChartData()
             }
@@ -207,9 +214,8 @@ class ChartController(
         if (featureParam != null) status += " for feature '$featureParam'"
         chartViewerPanel.setStatus("$status...")
         chartViewerPanel.clearChartPanel()
+        val request = ChartRequest(config, currentEditorContext)
 
-        val requestContext = ContextInfo(methodParam, featureParam)
-        val request = ChartRequest(config, requestContext)
 
         chartService.fetchChartData(request) { response ->
             val configFromResponse = response.originalRequest.config
@@ -221,7 +227,7 @@ class ChartController(
                 configFromResponse.sqlTemplate.contains(ContextAwareQueryBuilder.METHOD_FQN_PLACEHOLDER)
             val methodFilterMatches = if (methodFilterRelevantToRequest) {
                 (contextFromResponse.methodFqn
-                    ?: ChartControlsProvider.ALL_METHODS_OPTION) == controlsState.currentMethodFilter
+                 ?: ChartControlsProvider.ALL_METHODS_OPTION) == controlsState.currentMethodFilter
             } else {
                 true
             }
@@ -230,7 +236,7 @@ class ChartController(
                 configFromResponse.sqlTemplate.contains(ContextAwareQueryBuilder.FEATURE_NAME_PLACEHOLDER)
             val featureFilterMatches = if (featureFilterRelevantToRequest) {
                 (contextFromResponse.featureName
-                    ?: ChartControlsProvider.ALL_FEATURES_OPTION) == controlsState.currentFeatureFilter
+                 ?: ChartControlsProvider.ALL_FEATURES_OPTION) == controlsState.currentFeatureFilter
             } else {
                 true
             }
