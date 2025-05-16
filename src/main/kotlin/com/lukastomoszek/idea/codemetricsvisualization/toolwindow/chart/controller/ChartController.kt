@@ -108,11 +108,11 @@ class ChartController(
 
         if (!isMethodFilterApplicable()) {
             newMethodFilter = ChartControlsProvider.ALL_METHODS_OPTION
-            filterLockManager.setMethodLock(false)
+            filterLockManager.isMethodFilterLocked = false
         }
         if (!isFeatureFilterApplicable()) {
             newFeatureFilter = ChartControlsProvider.ALL_FEATURES_OPTION
-            filterLockManager.setFeatureLock(false)
+            filterLockManager.isFeatureFilterLocked = false
         }
         controlsState = controlsState.copy(
             currentMethodFilter = newMethodFilter,
@@ -121,6 +121,7 @@ class ChartController(
     }
 
     private fun handleContextUpdate(editorContext: ContextInfo) {
+        if (editorContext == currentEditorContext) return
         currentEditorContext = editorContext
 
         var newMethodFilter = controlsState.currentMethodFilter
@@ -164,12 +165,6 @@ class ChartController(
                         currentMethodFilter = updatedMethodFilter,
                     )
                 }
-                chartUIManager.updateControlsVisualState(
-                    controlsState.currentChartConfig,
-                    filterLockManager.isMethodFilterLocked,
-                    filterLockManager.isFeatureFilterLocked
-                )
-
 
                 if (!filterLockManager.isFeatureFilterLocked) {
                     val featuresInFileForDropdown =
@@ -184,6 +179,12 @@ class ChartController(
                         currentFeatureFilter = updatedFeatureFilter
                     )
                 }
+
+                chartUIManager.updateControlsVisualState(
+                    controlsState.currentChartConfig,
+                    filterLockManager.isMethodFilterLocked,
+                    filterLockManager.isFeatureFilterLocked
+                )
                 chartUIManager.synchronizeComboBoxSelections(
                     controlsState.currentChartConfig,
                     controlsState.currentMethodFilter,

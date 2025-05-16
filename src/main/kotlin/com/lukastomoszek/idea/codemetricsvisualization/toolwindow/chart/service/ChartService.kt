@@ -32,7 +32,7 @@ class ChartService(
         if (querySqlTemplate.isBlank()) {
             val response =
                 ChartResponse(errorMessage = "Chart query for '$chartName' is empty.", originalRequest = request)
-            cs.launch { withContext(Dispatchers.Main) { callback(response) } }
+            callback(response)
             return
         }
 
