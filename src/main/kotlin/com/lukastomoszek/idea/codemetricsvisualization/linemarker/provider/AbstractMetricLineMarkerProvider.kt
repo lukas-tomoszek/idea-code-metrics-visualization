@@ -36,7 +36,6 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
     abstract fun filterEnabledConfigs(allEnabledConfigs: List<LineMarkerConfig>): List<LineMarkerConfig>
     open suspend fun preFilterElement(element: T, project: Project): Boolean = true
     abstract suspend fun getAnchorElement(element: T): PsiElement?
-    abstract fun getLineMarkerGroupName(config: LineMarkerConfig): String
 
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? = null
 
@@ -133,7 +132,7 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
                                         tooltipProvider,
                                         null,
                                         GutterIconRenderer.Alignment.LEFT,
-                                    ) { getLineMarkerGroupName(config) }
+                                    ) { "Production Code Metric Visualization (${config.name})" }
                                     elementMarkers.add(info)
                                 }
                             },

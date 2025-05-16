@@ -40,8 +40,4 @@ class FeatureEvaluationLineMarkerProvider :
             element.methodExpression.referenceNameElement ?: element.methodExpression
         }
     }
-
-    override fun getLineMarkerGroupName(config: LineMarkerConfig): String {
-        return "Metric Visualization (${config.name})"
-    }
 }

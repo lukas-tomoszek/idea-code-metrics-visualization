@@ -28,8 +28,4 @@ class MethodDefinitionLineMarkerProvider : AbstractMetricLineMarkerProvider<PsiI
             (element.parent as? PsiMethod)?.nameIdentifier
         }
     }
-
-    override fun getLineMarkerGroupName(config: LineMarkerConfig): String {
-        return "Code Metric Visualization (${config.name})"
-    }
 }
