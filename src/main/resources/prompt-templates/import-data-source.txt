@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS log_entries (
     timestamp TIMESTAMP,
     user_id BIGINT,
     tenant_id BIGINT,
-    method_name VARCHAR
+    method_fqn VARCHAR
 );
 
 INSERT INTO log_entries
@@ -107,7 +107,7 @@ SELECT
     timestamp,
     "cmap_user-id" AS user_id,
     "cmap_developer-id" AS tenant_id,
-    "cmap_message" AS method_name
+    "cmap_message" AS method_fqn
 FROM read_csv('C:/log/sample.csv',
     header=true,
     timestampformat='%b %d, %Y @ %H:%M:%S.%f');

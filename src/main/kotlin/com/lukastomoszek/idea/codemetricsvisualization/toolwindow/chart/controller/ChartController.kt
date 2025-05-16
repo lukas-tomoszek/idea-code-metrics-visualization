@@ -94,7 +94,7 @@ class ChartController(
     }
 
     private fun isMethodFilterApplicable(): Boolean {
-        return controlsState.currentChartConfig?.sqlTemplate?.contains(ContextAwareQueryBuilder.METHOD_NAME_PLACEHOLDER)
+        return controlsState.currentChartConfig?.sqlTemplate?.contains(ContextAwareQueryBuilder.METHOD_FQN_PLACEHOLDER)
             ?: false
     }
 
@@ -218,7 +218,7 @@ class ChartController(
             val configMatches = configFromResponse == controlsState.currentChartConfig
 
             val methodFilterRelevantToRequest =
-                configFromResponse.sqlTemplate.contains(ContextAwareQueryBuilder.METHOD_NAME_PLACEHOLDER)
+                configFromResponse.sqlTemplate.contains(ContextAwareQueryBuilder.METHOD_FQN_PLACEHOLDER)
             val methodFilterMatches = if (methodFilterRelevantToRequest) {
                 (contextFromResponse.methodFqn
                     ?: ChartControlsProvider.ALL_METHODS_OPTION) == controlsState.currentMethodFilter

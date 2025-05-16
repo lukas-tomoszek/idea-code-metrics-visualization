@@ -5,7 +5,7 @@ import com.intellij.util.xmlb.annotations.XCollection
 internal object DefaultLineMarkerConfig {
     const val ENABLED = true
     const val NAME = "New Line Marker Config"
-    const val SQL_TEMPLATE = "SELECT COUNT(*) FROM log_entries WHERE method_name = '#method_name#'"
+    const val SQL_TEMPLATE = "SELECT COUNT(*) FROM log_entries WHERE method_fqn = '#method_fqn#'"
     val RULES = mutableListOf(
         LineMarkerRule(LineMarkerOperator.GREATER_THAN, 50.0f, "#FF0000"),
         LineMarkerRule(LineMarkerOperator.GREATER_THAN, 10.0f, "#FFFF00"),

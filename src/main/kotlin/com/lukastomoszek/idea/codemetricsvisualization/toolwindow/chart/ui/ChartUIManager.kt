@@ -92,7 +92,7 @@ class ChartUIManager(
         controlsProvider.chartConfigComboBox.isEnabled = chartConfigsModel.size > 0
 
         val methodFilteringApplicable =
-            currentChartConfig?.sqlTemplate?.contains(ContextAwareQueryBuilder.METHOD_NAME_PLACEHOLDER) ?: false
+            currentChartConfig?.sqlTemplate?.contains(ContextAwareQueryBuilder.METHOD_FQN_PLACEHOLDER) ?: false
         controlsProvider.methodFilterComboBox.isEnabled = methodFilteringApplicable && methodFilterModel.size > 0
         controlsProvider.lockMethodButton.isEnabled = methodFilteringApplicable
         controlsProvider.updateLockButton(

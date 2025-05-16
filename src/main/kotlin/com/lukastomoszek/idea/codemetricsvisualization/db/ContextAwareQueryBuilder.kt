@@ -3,7 +3,7 @@ package com.lukastomoszek.idea.codemetricsvisualization.db
 import com.lukastomoszek.idea.codemetricsvisualization.context.model.ContextInfo
 
 object ContextAwareQueryBuilder {
-    const val METHOD_NAME_PLACEHOLDER = "#method_name#"
+    const val METHOD_FQN_PLACEHOLDER = "#method_fqn#"
     const val FEATURE_NAME_PLACEHOLDER = "#feature_name#"
     const val DEFAULT_PLACEHOLDER_VALUE = "%"
 
@@ -14,13 +14,13 @@ object ContextAwareQueryBuilder {
     ): Result<String> {
         var finalSql = sqlTemplate
 
-        if (sqlTemplate.contains(METHOD_NAME_PLACEHOLDER)) {
+        if (sqlTemplate.contains(METHOD_FQN_PLACEHOLDER)) {
             val value = when {
                 contextInfo.methodFqn != null -> contextInfo.methodFqn
                 useDefaultsForUnresolved -> DEFAULT_PLACEHOLDER_VALUE
                 else -> return Result.failure(IllegalArgumentException("Missing required method FQN for SQL template"))
             }
-            finalSql = finalSql.replace(METHOD_NAME_PLACEHOLDER, value)
+            finalSql = finalSql.replace(METHOD_FQN_PLACEHOLDER, value)
         }
 
         if (sqlTemplate.contains(FEATURE_NAME_PLACEHOLDER)) {

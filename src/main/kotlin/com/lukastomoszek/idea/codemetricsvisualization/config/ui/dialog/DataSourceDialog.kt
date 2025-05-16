@@ -36,7 +36,7 @@ class DataSourceDialog(
         - Truncate time from timestamps and store them as DATE to save space.
         - Only import the following columns: "timestamp", "user_id", "method_fqn".
         - Do not rename columns unless necessary. / Rename columns to meaningful names.
-        - Rename column 'untitled' to 'method_name'.
+        - Rename column 'untitled' to 'method_fqn'.
         - Cast 'transaction_amount' to DECIMAL(10,2).
         - Exclude rows where 'status' = 'test_order'.
         - If appending, the target table already has columns: timestamp (DATE), status_code (VARCHAR), mapping_path (VARCHAR).
