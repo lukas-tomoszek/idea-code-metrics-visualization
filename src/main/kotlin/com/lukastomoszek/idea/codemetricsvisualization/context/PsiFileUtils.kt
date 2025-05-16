@@ -1,25 +1,18 @@
 package com.lukastomoszek.idea.codemetricsvisualization.context
 
 import com.intellij.openapi.application.readAction
-import com.intellij.openapi.components.Service
-import com.intellij.openapi.project.Project
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiMethod
-import com.intellij.psi.PsiMethodCallExpression
+import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 
-@Service(Service.Level.PROJECT)
-class EditorFileContextService(private val project: Project, private val cs: CoroutineScope) {
+object PsiFileUtils {
 
     suspend fun getMethodsAndFeaturesInContainingFile(psiElement: PsiElement): Pair<List<String>, List<String>> {
         val psiFile = readAction { psiElement.containingFile } ?: return Pair(emptyList(), emptyList())
 
-        return withContext(cs.coroutineContext + Dispatchers.Default) {
+        return withContext(Dispatchers.Default) {
             val methodsDeferred = async { collectMethods(psiFile) }
             val featuresDeferred = async { collectFeatures(psiFile) }
 
@@ -50,8 +43,21 @@ class EditorFileContextService(private val project: Project, private val cs: Cor
         return featureNames
     }
 
-    companion object {
-        fun getInstance(project: Project): EditorFileContextService =
-            project.getService(EditorFileContextService::class.java)
+    suspend fun extractMappingPathsAndMethods(psiElement: PsiElement): Pair<List<String>, List<String>> {
+        val psiFile = readAction { psiElement.containingFile } ?: return emptyList<String>() to emptyList()
+
+        val annotations = readAction {
+            PsiTreeUtil.collectElementsOfType(psiFile, PsiAnnotation::class.java)
+        }
+
+        val results = annotations.mapNotNull { annotation ->
+            if (SpringMappingExtractionUtil.isSpringMappingAnnotation(readAction { annotation.qualifiedName })) {
+                SpringMappingExtractionUtil.extractPathAndMethod(annotation)
+            } else null
+        }
+
+        val paths = results.mapNotNull { it.first }.distinct().sorted()
+        val methods = results.mapNotNull { it.second }.distinct().sorted()
+        return paths to methods
     }
 }

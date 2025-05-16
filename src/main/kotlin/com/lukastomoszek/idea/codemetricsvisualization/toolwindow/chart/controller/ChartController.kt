@@ -6,6 +6,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.ui.CollectionComboBoxModel
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.ChartConfig
 import com.lukastomoszek.idea.codemetricsvisualization.context.model.ContextInfo
+import com.lukastomoszek.idea.codemetricsvisualization.db.ContextAwareQueryBuilder
 import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.listener.ChartContextListener
 import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.model.ChartRequest
 import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.service.ChartService
@@ -24,6 +25,8 @@ class ChartController(
     private val chartConfigsModel = CollectionComboBoxModel<ChartConfig>()
     private val methodFilterModel = CollectionComboBoxModel<String>()
     private val featureFilterModel = CollectionComboBoxModel<String>()
+    private val mappingPathFilterModel = CollectionComboBoxModel<String>()
+    private val mappingMethodFilterModel = CollectionComboBoxModel<String>()
 
     init {
         controlsProvider = ChartControlsProvider(
@@ -31,12 +34,16 @@ class ChartController(
             chartConfigsModel,
             methodFilterModel,
             featureFilterModel,
+            mappingPathFilterModel,
+            mappingMethodFilterModel,
             onChartConfigSelected = {
                 resetFiltersBasedOnConfig()
-                fetchAndDisplayChartData()
+                updateContext()
             },
             onMethodFilterSelected = { fetchAndDisplayChartData() },
             onFeatureFilterSelected = { fetchAndDisplayChartData() },
+            onMappingPathFilterSelected = { fetchAndDisplayChartData() },
+            onMappingMethodFilterSelected = { fetchAndDisplayChartData() },
             onChartDropdownOpening = { loadChartConfigurations() }
         )
         Disposer.register(this, chartContextListener)
@@ -44,36 +51,47 @@ class ChartController(
 
     fun initialize() {
         chartContextListener.register()
-        ChartService.getInstance(project).scheduleContextUpdate { context -> handleContextUpdate(context) }
         loadChartConfigurations()
+        resetFiltersBasedOnConfig()
+        updateContext()
     }
 
     fun loadChartConfigurations() {
         val previousSelectedConfig = controlsProvider.getSelectedChartConfig()
         val configs = ChartService.getInstance(project).getAvailableChartConfigs()
         controlsProvider.updateChartConfigComboBox(previousSelectedConfig, configs)
-        val newConfig = controlsProvider.getSelectedChartConfig()
-
-        if (previousSelectedConfig != newConfig) {
-            resetFiltersBasedOnConfig()
-            fetchAndDisplayChartData()
-        }
     }
 
     private fun isMethodFilterApplicable(): Boolean {
-        return controlsProvider.getSelectedChartConfig()?.hasMethodFqnPlaceholder() ?: false
+        return controlsProvider.getSelectedChartConfig()?.sqlTemplate
+                   ?.contains(ContextAwareQueryBuilder.METHOD_FQN_PLACEHOLDER) ?: false
     }
 
     private fun isFeatureFilterApplicable(): Boolean {
-        return controlsProvider.getSelectedChartConfig()?.hasFeatureNamePlaceholder() ?: false
+        return controlsProvider.getSelectedChartConfig()?.sqlTemplate
+                   ?.contains(ContextAwareQueryBuilder.FEATURE_NAME_PLACEHOLDER) ?: false
+    }
+
+    private fun isMappingPathFilterApplicable(): Boolean {
+        return controlsProvider.getSelectedChartConfig()?.sqlTemplate
+                   ?.contains(ContextAwareQueryBuilder.MAPPING_PATH_PLACEHOLDER) ?: false
+    }
+
+    private fun isMappingMethodFilterApplicable(): Boolean {
+        return controlsProvider.getSelectedChartConfig()?.sqlTemplate
+                   ?.contains(ContextAwareQueryBuilder.MAPPING_METHOD_PLACEHOLDER) ?: false
     }
 
     private fun resetFiltersBasedOnConfig() {
         val methodEnabled = isMethodFilterApplicable()
         val featureEnabled = isFeatureFilterApplicable()
+        val mappingPathEnabled = isMappingPathFilterApplicable()
+        val mappingMethodEnabled = isMappingMethodFilterApplicable()
 
         controlsProvider.methodFilterComboBox.isEnabled = methodEnabled
         controlsProvider.featureFilterComboBox.isEnabled = featureEnabled
+        controlsProvider.mappingPathFilterComboBox.isEnabled = mappingPathEnabled
+        controlsProvider.mappingMethodFilterComboBox.isEnabled = mappingMethodEnabled
 
         if (!methodEnabled) {
             controlsProvider.updateMethodFilterModel(ChartControlsProvider.ALL_METHODS_OPTION)
@@ -81,6 +99,16 @@ class ChartController(
         if (!featureEnabled) {
             controlsProvider.updateFeatureFilterModel(ChartControlsProvider.ALL_FEATURES_OPTION)
         }
+        if (!mappingPathEnabled) {
+            controlsProvider.updateMappingPathFilterModel(ChartControlsProvider.ALL_MAPPING_PATHS_OPTION)
+        }
+        if (!mappingMethodEnabled) {
+            controlsProvider.updateMappingMethodFilterModel(ChartControlsProvider.ALL_MAPPING_METHODS_OPTION)
+        }
+    }
+
+    private fun updateContext() {
+        ChartService.getInstance(project).scheduleContextUpdate { context -> handleContextUpdate(context) }
     }
 
     private fun handleContextUpdate(editorContext: ContextInfo) {
@@ -93,9 +121,17 @@ class ChartController(
             if (!isFeatureFilterApplicable()) {
                 ctx = ctx.copy(featureName = null)
             }
+            if (!isMappingPathFilterApplicable()) {
+                ctx = ctx.copy(mappingPath = null)
+            }
+            if (!isMappingMethodFilterApplicable()) {
+                ctx = ctx.copy(mappingMethod = null)
+            }
 
             controlsProvider.updateMethodFilterModel(ctx.methodFqn, ctx.allMethodsInFile)
             controlsProvider.updateFeatureFilterModel(ctx.featureName, ctx.allFeaturesInFile)
+            controlsProvider.updateMappingPathFilterModel(ctx.mappingPath, ctx.allMappingPathsInFile)
+            controlsProvider.updateMappingMethodFilterModel(ctx.mappingMethod, ctx.allMappingMethodsInFile)
             fetchAndDisplayChartData()
         }
     }
@@ -111,14 +147,24 @@ class ChartController(
         var status = "Loading chart '${config.name}'"
         val selectedMethodFilter = controlsProvider.getSelectedMethodFilter()
         val selectedFeatureFilter = controlsProvider.getSelectedFeatureFilter()
+        val selectedMappingPathFilter = controlsProvider.getSelectedMappingPathFilter()
+        val selectedMappingMethodFilter = controlsProvider.getSelectedMappingMethodFilter()
 
         val methodParamForQuery =
             if (isMethodFilterApplicable()) selectedMethodFilter.takeIf { it != ChartControlsProvider.ALL_METHODS_OPTION } else null
         val featureParamForQuery =
             if (isFeatureFilterApplicable()) selectedFeatureFilter.takeIf { it != ChartControlsProvider.ALL_FEATURES_OPTION } else null
+        val mappingPathParamForQuery =
+            if (isMappingPathFilterApplicable()) selectedMappingPathFilter.takeIf { it != ChartControlsProvider.ALL_MAPPING_PATHS_OPTION } else null
+        val mappingMethodParamForQuery =
+            if (isMappingMethodFilterApplicable()) selectedMappingMethodFilter.takeIf { it != ChartControlsProvider.ALL_MAPPING_METHODS_OPTION } else null
+
 
         if (methodParamForQuery != null) status += " for method '$methodParamForQuery'"
         if (featureParamForQuery != null) status += " for feature '$featureParamForQuery'"
+        if (mappingPathParamForQuery != null) status += " for path '$mappingPathParamForQuery'"
+        if (mappingMethodParamForQuery != null) status += " (HTTP ${mappingMethodParamForQuery})"
+
         chartViewerPanel.setStatus("$status...")
         chartViewerPanel.clearChartPanel()
 
@@ -126,7 +172,11 @@ class ChartController(
             methodFqn = methodParamForQuery,
             featureName = featureParamForQuery,
             allMethodsInFile = controlsProvider.getMethodsFqnsInFile(),
-            allFeaturesInFile = controlsProvider.getFeatureNamesInFile()
+            allFeaturesInFile = controlsProvider.getFeatureNamesInFile(),
+            mappingPath = mappingPathParamForQuery,
+            mappingMethod = mappingMethodParamForQuery,
+            allMappingPathsInFile = controlsProvider.getMappingPathsInFile(),
+            allMappingMethodsInFile = controlsProvider.getMappingMethodsInFile(),
         )
         val request = ChartRequest(config, requestContextInfo)
 

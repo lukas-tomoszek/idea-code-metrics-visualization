@@ -4,5 +4,9 @@ data class ContextInfo(
     val methodFqn: String?,
     val featureName: String?,
     val allMethodsInFile: List<String>,
-    val allFeaturesInFile: List<String>
+    val allFeaturesInFile: List<String>,
+    val mappingPath: String?,
+    val mappingMethod: String?,
+    val allMappingPathsInFile: List<String>,
+    val allMappingMethodsInFile: List<String>
 )

@@ -7,29 +7,26 @@ import com.intellij.psi.PsiMethodCallExpression
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.FeatureEvaluatorSettings
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerConfig
 import com.lukastomoszek.idea.codemetricsvisualization.context.PsiUtils
+import com.lukastomoszek.idea.codemetricsvisualization.db.ContextAwareQueryBuilder
 
 class FeatureEvaluationLineMarkerProvider :
     AbstractMetricLineMarkerProvider<PsiMethodCallExpression>(PsiMethodCallExpression::class.java) {
 
     override fun filterEnabledConfigs(allEnabledConfigs: List<LineMarkerConfig>): List<LineMarkerConfig> {
-        return allEnabledConfigs.filter { it.hasFeatureNamePlaceholder() }
+        return allEnabledConfigs.filter { it.sqlTemplate.contains(ContextAwareQueryBuilder.FEATURE_NAME_PLACEHOLDER) }
     }
 
     override suspend fun preFilterElement(element: PsiMethodCallExpression, project: Project): Boolean {
-        val featureEvaluatorSettings = FeatureEvaluatorSettings.getInstance(project)
-        val configuredEvaluatorFqns =
-            featureEvaluatorSettings.state.configs.map { it.evaluatorMethodFqn }.toSet()
+        val configuredFqns = FeatureEvaluatorSettings.getInstance(project).state.configs
+            .map { it.evaluatorMethodFqn }
+            .toSet()
 
-        if (configuredEvaluatorFqns.isEmpty()) false
-        val resolvedMethod = readAction {
-            element.resolveMethod()
-        }
-        if (resolvedMethod != null) {
-            val methodFqn = PsiUtils.getContainingMethodFqn(resolvedMethod)
-            return methodFqn != null && configuredEvaluatorFqns.contains(methodFqn)
-        } else {
-            return false
-        }
+        if (configuredFqns.isEmpty()) return false
+
+        val method = readAction { element.resolveMethod() } ?: return false
+        val methodFqn = PsiUtils.getContainingMethodFqn(method)
+
+        return methodFqn != null && methodFqn in configuredFqns
     }
 
     override suspend fun getAnchorElement(element: PsiMethodCallExpression): PsiElement? {

@@ -1,30 +1,56 @@
 # Generate DuckDB SQL for Chart
 
-Description from User:
-{{llmDescription}}
-
----
-Task:
+**Task:**
 Generate a DuckDB SQL query suitable for creating a chart.
 The query should:
-1. Return two columns.
+
+1. Return **two columns**:
    - The first column will be used for the X-axis (labels, categories, or time series).
    - The second column will be used for the Y-axis (values).
-2. Use placeholders (If relevant):
-   - `#method_fqn#`: Fully qualified name of the user-selected method from the current file (or '%' if 'All Methods' is selected).
-   - `#feature_name#`: Name of the user-selected feature from the current file (or '%' if 'All Features' is selected).
+
+2. Use placeholders (if relevant):
+   - `#method_fqn#`: Fully qualified name of the user-selected method from the current file (or `%` if "All Methods" is selected).
+   - `#feature_name#`: Name of the user-selected feature from the current file (or `%` if "All Features" is selected).
    - `#method_fqns_in_file#`: A csv of all method FQNs in the current file (e.g., `'com.example.A.method1', 'com.example.A.method2'`).
    - `#feature_names_in_file#`: A csv of all feature names in the current file (e.g., `'feat_a', 'feat_b'`).
-   - Examples:
-     - `SELECT date_trunc('day', timestamp) AS day, COUNT(*) AS errors FROM my_logs WHERE event = 'ERROR' GROUP BY day ORDER BY day;`
-     - `SELECT feature_flag, SUM(value) FROM events WHERE method_fqn LIKE '#method_fqn#' GROUP BY feature_flag;`
-     - `SELECT method_name, COUNT(*) AS call_count FROM log_entries WHERE method_name IN (#method_fqns_in_file#)
-        GROUP BY method_name ORDER BY call_count DESC;`
+   - `#mapping_path#`: HTTP mapping path matched for this method (or `.*` if all are selected).
+   - `#mapping_method#`: HTTP method matched for this mapping (e.g., `GET`, or `%` if all).
+   - `#mapping_paths_in_file#`: A csv of all mapping paths in the current file (e.g., `'/api/v1/foo', '/api/v2/bar'`).
+   - `#mapping_methods_in_file#`: A csv of all mapping methods in the current file (e.g., `'GET', 'POST'`).
+
+**Examples:**
+```sql
+SELECT date_trunc('day', timestamp) AS day, COUNT(*) AS errors
+FROM my_logs
+WHERE event = 'ERROR'
+GROUP BY day
+ORDER BY day;
+
+SELECT feature_flag, SUM(value)
+FROM events
+WHERE method_fqn LIKE '#method_fqn#'
+GROUP BY feature_flag;
+
+SELECT method_name, COUNT(*) AS call_count
+FROM log_entries
+WHERE method_name IN (#method_fqns_in_file#)
+GROUP BY method_name
+ORDER BY call_count DESC;
+
+SELECT
+  date_trunc('day', timestamp) AS day,
+  COUNT(*) AS request_count
+FROM apache_log
+WHERE method LIKE '#mapping_method#'
+  AND REGEXP_MATCHES(path, '^#mapping_path#/?(\?.*)?$')
+GROUP BY day
+ORDER BY day;
+```
+
 3. Refer to the table samples below for available columns and data structure.
 
-_No extra commentary—SQL only._
+**Description from User:**
+{{llmDescription}}
 
----
-Available Table Samples (Top 10 rows using `USING SAMPLE 10 ROWS`):
-
+**Available Table Samples (Top 10 rows using `USING SAMPLE 10 ROWS`):**
 {{tableSamples}}

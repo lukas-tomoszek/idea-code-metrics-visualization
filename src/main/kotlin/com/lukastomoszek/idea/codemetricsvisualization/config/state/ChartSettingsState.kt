@@ -1,7 +1,6 @@
 package com.lukastomoszek.idea.codemetricsvisualization.config.state
 
 import com.intellij.util.xmlb.annotations.XCollection
-import com.lukastomoszek.idea.codemetricsvisualization.db.ContextAwareQueryBuilder
 
 object DefaultChartConfig {
     const val NAME = "New Chart"
@@ -20,15 +19,7 @@ data class ChartConfig(
     var llmDescription: String = DefaultChartConfig.LLM_DESCRIPTION,
     @XCollection
     var llmRelevantTableNames: List<String> = DefaultChartConfig.LLM_RELEVANT_TABLE_NAMES
-) : NamedConfig {
-    fun hasMethodFqnPlaceholder(): Boolean {
-        return sqlTemplate.contains(ContextAwareQueryBuilder.METHOD_FQN_PLACEHOLDER)
-    }
-
-    fun hasFeatureNamePlaceholder(): Boolean {
-        return sqlTemplate.contains(ContextAwareQueryBuilder.FEATURE_NAME_PLACEHOLDER)
-    }
-}
+) : NamedConfig
 
 data class ChartSettingsState(
     @XCollection

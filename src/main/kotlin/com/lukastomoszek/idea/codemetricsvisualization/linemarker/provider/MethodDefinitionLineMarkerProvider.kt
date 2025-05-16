@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiIdentifier
 import com.intellij.psi.PsiMethod
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerConfig
+import com.lukastomoszek.idea.codemetricsvisualization.db.ContextAwareQueryBuilder
 
 class MethodDefinitionLineMarkerProvider : AbstractMetricLineMarkerProvider<PsiIdentifier>(PsiIdentifier::class.java) {
 
@@ -16,7 +17,12 @@ class MethodDefinitionLineMarkerProvider : AbstractMetricLineMarkerProvider<PsiI
     }
 
     override fun filterEnabledConfigs(allEnabledConfigs: List<LineMarkerConfig>): List<LineMarkerConfig> {
-        return allEnabledConfigs.filter { it.hasMethodFqnPlaceholder() && !it.hasFeatureNamePlaceholder() }
+        return allEnabledConfigs.filter {
+            it.sqlTemplate.contains(ContextAwareQueryBuilder.METHOD_FQN_PLACEHOLDER)
+            && !it.sqlTemplate.contains(ContextAwareQueryBuilder.FEATURE_NAME_PLACEHOLDER)
+            && !it.sqlTemplate.contains(ContextAwareQueryBuilder.MAPPING_PATH_PLACEHOLDER)
+            && !it.sqlTemplate.contains(ContextAwareQueryBuilder.MAPPING_METHOD_PLACEHOLDER)
+        }
     }
 
     override suspend fun getAnchorElement(element: PsiIdentifier): PsiElement? {

@@ -44,6 +44,9 @@
         <codeInsight.lineMarkerProvider
                 language="JAVA"
                 implementationClass="com.lukastomoszek.idea.codemetricsvisualization.linemarker.provider.FeatureEvaluationLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider
+                language="JAVA"
+                implementationClass="com.lukastomoszek.idea.codemetricsvisualization.linemarker.provider.SpringMappingLineMarkerProvider"/>
 
         <notificationGroup
                 id="Code Metrics Visualization Notifications"
