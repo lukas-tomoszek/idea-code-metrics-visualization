@@ -6,8 +6,10 @@ import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.lukastomoszek.idea.codemetricsvisualization.db.model.QueryResult
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
@@ -77,27 +79,29 @@ class DuckDbService(private val project: Project) {
         }
 
         return writeMutex.withLock {
-            runCatching {
-                getConnection(readOnly = false).use { conn ->
-                    conn.createStatement().use { statement ->
-                        thisLogger().info("Executing write SQL: $sql")
-                        statement.execute(sql)
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    getConnection(readOnly = false).use { conn ->
+                        conn.createStatement().use { statement ->
+                            thisLogger().info("Executing write SQL: $sql")
+                            statement.execute(sql)
+                        }
                     }
+                    thisLogger().info("Successfully executed write SQL.")
+                    QueryCacheService.getInstance(project).clear()
+                }.onFailure { error ->
+                    if (error is ControlFlowException || error is CancellationException) throw error
+                    val errorMessage = when (error) {
+                        is SQLException -> "SQL Error executing write query '$sql': ${error.message}"
+                        else -> "Unexpected error during write SQL for query '$sql': ${error.message}"
+                    }
+                    thisLogger().error(errorMessage, error)
                 }
-                thisLogger().info("Successfully executed write SQL.")
-                QueryCacheService.getInstance(project).clear()
-            }.onFailure { error ->
-                if (error is ControlFlowException || error is CancellationException) throw error
-                val errorMessage = when (error) {
-                    is SQLException -> "SQL Error executing write query '$sql': ${error.message}"
-                    else -> "Unexpected error during write SQL for query '$sql': ${error.message}"
-                }
-                thisLogger().error(errorMessage, error)
             }
         }
     }
 
-    fun executeReadQuery(sql: String): Result<QueryResult> {
+    suspend fun executeReadQuery(sql: String): Result<QueryResult> {
         if (sql.isBlank()) {
             thisLogger().warn("Read SQL command is blank, skipping execution.")
             return Result.failure(IllegalArgumentException("Read SQL command cannot be blank."))
@@ -113,43 +117,44 @@ class DuckDbService(private val project: Project) {
             return Result.failure(SQLException(errorMessage))
         }
 
-        return runCatching {
-            getConnection(readOnly = true).use { conn ->
-                conn.createStatement().use { stmt ->
-                    thisLogger().debug("Executing read SQL: $sql (timeout: $QUERY_TIMEOUT_SECONDS sec)")
-                    stmt.queryTimeout = QUERY_TIMEOUT_SECONDS
-                    stmt.executeQuery(sql).use { rs ->
-                        val metaData: ResultSetMetaData = rs.metaData
-                        val columnCount = metaData.columnCount
-                        val columnNames = List(columnCount) { i -> metaData.getColumnLabel(i + 1) }
-                        val columnTypes = List(columnCount) { i -> metaData.getColumnTypeName(i + 1) }
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                getConnection(readOnly = true).use { conn ->
+                    conn.createStatement().use { stmt ->
+                        stmt.queryTimeout = READ_QUERY_TIMEOUT_SECONDS
+                        stmt.executeQuery(sql).use { rs ->
+                            val metaData: ResultSetMetaData = rs.metaData
+                            val columnCount = metaData.columnCount
+                            val columnNames = List(columnCount) { i -> metaData.getColumnLabel(i + 1) }
+                            val columnTypes = List(columnCount) { i -> metaData.getColumnTypeName(i + 1) }
 
-                        val results = mutableListOf<Map<String, Any?>>()
-                        while (rs.next()) {
-                            val rowMap = mutableMapOf<String, Any?>()
-                            for (i in 1..columnCount) {
-                                rowMap[columnNames[i - 1]] = rs.getObject(i)
+                            val results = mutableListOf<Map<String, Any?>>()
+                            while (rs.next()) {
+                                val rowMap = mutableMapOf<String, Any?>()
+                                for (i in 1..columnCount) {
+                                    rowMap[columnNames[i - 1]] = rs.getObject(i)
+                                }
+                                results.add(Collections.unmodifiableMap(rowMap))
                             }
-                            results.add(Collections.unmodifiableMap(rowMap))
+                            QueryResult(columnNames, columnTypes, results)
                         }
-                        QueryResult(columnNames, columnTypes, results)
                     }
                 }
+            }.onSuccess { queryResult ->
+                QueryCacheService.getInstance(project).put(sql, Result.success(queryResult))
+            }.onFailure { error ->
+                if (error is ControlFlowException || error is CancellationException) throw error
+                val errorMessage = when (error) {
+                    is SQLException -> "Database Read Error for query '$sql': ${error.message}"
+                    else -> "Unexpected Read Error for query '$sql': ${error.message}"
+                }
+                thisLogger().warn(errorMessage, error)
             }
-        }.onSuccess { queryResult ->
-            QueryCacheService.getInstance(project).put(sql, Result.success(queryResult))
-        }.onFailure { error ->
-            if (error is ControlFlowException || error is CancellationException) throw error
-            val errorMessage = when (error) {
-                is SQLException -> "Database Read Error for query '$sql': ${error.message}"
-                else -> "Unexpected Read Error for query '$sql': ${error.message}"
-            }
-            thisLogger().warn(errorMessage, error)
         }
     }
 
     companion object {
-        const val QUERY_TIMEOUT_SECONDS = 10
+        const val READ_QUERY_TIMEOUT_SECONDS = 10
 
         fun getInstance(project: Project): DuckDbService =
             project.getService(DuckDbService::class.java)

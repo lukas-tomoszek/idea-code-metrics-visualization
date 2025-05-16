@@ -93,11 +93,11 @@ class LlmPromptGenerationService(
     private suspend fun fetchTableSamples(tableNames: List<String>): String {
         if (tableNames.isEmpty()) return "No relevant tables specified."
         val duckDbService = DuckDbService.getInstance(project)
-        return tableNames.joinToString("\n\n") { tableName ->
+        return tableNames.map { tableName ->
             val sampleQuery = "SELECT * FROM \"$tableName\" USING SAMPLE 10 ROWS;"
             val result = duckDbService.executeReadQuery(sampleQuery)
             formatTableSample(tableName, result)
-        }
+        }.joinToString("\n\n")
     }
 
     private fun formatTableSample(tableName: String, result: Result<QueryResult>): String {

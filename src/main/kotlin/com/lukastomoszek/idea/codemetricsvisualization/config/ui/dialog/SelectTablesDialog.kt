@@ -1,6 +1,5 @@
 package com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog
 
-import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.ui.CheckBoxList
@@ -9,6 +8,9 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.panel
 import com.lukastomoszek.idea.codemetricsvisualization.db.DuckDbService
+import com.lukastomoszek.idea.codemetricsvisualization.db.model.QueryResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import javax.swing.DefaultListModel
 import javax.swing.JCheckBox
 import javax.swing.JComponent
@@ -46,7 +48,7 @@ class SelectTablesDialog(
 
     private fun populateTableNames(project: Project) {
         val duckDbService = DuckDbService.getInstance(project)
-        val result = runReadAction {
+        val result: Result<QueryResult> = runBlocking(Dispatchers.IO) {
             duckDbService.executeReadQuery("SHOW TABLES;")
         }
 
