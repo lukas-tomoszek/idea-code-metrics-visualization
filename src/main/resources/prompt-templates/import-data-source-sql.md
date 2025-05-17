@@ -5,7 +5,7 @@ Generate a DuckDB SQL query template suitable for importing data into a DuckDB d
 The SQL query must:
 
 1. Read the file with the correct reader (`read_csv`, `read_parquet`, `read_json`, etc.)
-2. Parses timestamps and fields (`timestampformat`, `to_timestamp`, `strptime`, `regexp_extract`, `split_part`)
+2. Parses timestamps and fields (`to_timestamp`, `strptime`, `regexp_extract`, `split_part`)
 3. Casts types safely (`TRY_CAST`, `NULLIF`) if needed
 4. Uses replace or append semantics based on Operation Mode
     - REPLACE:
@@ -44,13 +44,13 @@ CREATE TABLE IF NOT EXISTS log_entries (
 
 INSERT INTO log_entries
 SELECT
-    timestamp,
+    strptime(timestamp, '%b %d, %Y @ %H:%M:%S.%f')::TIMESTAMP AS timestamp,
     "cmap_user-id" AS user_id,
     "cmap_developer-id" AS tenant_id,
     "cmap_message" AS method_fqn
 FROM read_csv('C:/log/sample.csv',
     header=true,
-    timestampformat='%b %d, %Y @ %H:%M:%S.%f');
+    timestampformat=' ');
 ```
 
 json:
@@ -90,12 +90,29 @@ SELECT
     regexp_extract(t.line, '"([^"]*)"$', 1) AS user_agent
 FROM read_csv('C:/logs/apache_log.txt',
     auto_detect=false,
+    timestampformat=' ',
     header=false,
     columns={'line':'VARCHAR'},
     delim='\n',
     strict_mode=false
 ) AS t
 WHERE t.line <> '';
+```
+
+```sql
+CREATE OR REPLACE TABLE new_table_1 AS
+SELECT
+    strptime(regexp_extract(t.line, '\[(.*?)\]', 1), '%a %b %d %H:%M:%S %Y')::TIMESTAMP AS timestamp,
+    regexp_extract(t.line, '\] \[(.*?)\]', 1) AS level,
+    regexp_extract(t.line, '\] \[.*?\] ([^\[]+)$', 1) AS message
+FROM read_csv('C:/logs/apache_log.log',
+    delim='\n',
+    header=false,
+    columns={'line':'VARCHAR'},
+    strict_mode=false
+) AS t
+WHERE t.line <> '';
+
 ```
 
 **Data Source Path:** `{{filePath}}`  
@@ -112,10 +129,13 @@ Sample Data (5–10 lines):
 ## Additional Knowledge base:
 
 1. Column names should contain only alphanumeric characters and underscores. Rename columns as needed to match this
-   style unless explicitly instructed otherwise.
-2. When parsing dates or timestamps, prefer: `to_timestamp(...)::TIMESTAMP` or `strptime(..., format)::TIMESTAMP`
+   style unless explicitly instructed otherwise. Use quotes when dealing with such names in the created SQL query.
+2. When parsing dates or timestamps, prefer: `to_timestamp(<unix_epoch_number>)::TIMESTAMP` or  
+   `strptime(<string>, format) ::TIMESTAMP`, always add `timestampformat=' '` to avoid double parsing.
 3. When dealing with raw or unknown formats, assume log-style input and use
    `read_csv(path, delim='\n', header=false, columns={'line':'VARCHAR'}, strict_mode=false)`
+4. VERY IMPORTANT: Use raw regex patterns with single backslashes (e.g., \[, not \\[), since DuckDB SQL strings are
+   single-quoted and do not require double escaping. Write regex exactly as you'd write it inside single quotes in SQL.
 
 ### Timestamp Format Specifiers (DuckDB)
 
@@ -133,7 +153,7 @@ Sample Data (5–10 lines):
 | `%a`      | Abbreviated weekday          | `Mon`    |
 | `%Z`      | Time zone name               | `UTC`    |
 
-Use these with `strptime(...)` or `timestampformat='...'` to correctly parse timestamps.
+Use these with `strptime(...)` to correctly parse timestamps.
 
 You may combine specifiers to match patterns like:
 
