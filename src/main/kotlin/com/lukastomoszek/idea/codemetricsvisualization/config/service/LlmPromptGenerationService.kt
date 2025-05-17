@@ -31,7 +31,7 @@ class LlmPromptGenerationService(
         cs.launch {
             val prompt = runCatching {
                 val fileSample = withContext(Dispatchers.IO) { resolveFileSample(config.filePath) }
-                val template = loadTemplate("import-data-source.txt")
+                val template = loadTemplate("import-data-source-sql.md")
                 createDataSourcePrompt(config, fileSample, template)
             }.getOrElse { e ->
                 if (e is ControlFlowException || e is CancellationException) throw e
@@ -48,7 +48,7 @@ class LlmPromptGenerationService(
         cs.launch {
             val prompt = runCatching {
                 val tableSamples = fetchTableSamples(config.llmRelevantTableNames)
-                val template = loadTemplate("line-marker-sql.txt")
+                val template = loadTemplate("line-marker-sql.md")
                 createLineMarkerPrompt(config, tableSamples, template)
             }.getOrElse { e ->
                 if (e is ControlFlowException || e is CancellationException) throw e
@@ -65,7 +65,7 @@ class LlmPromptGenerationService(
         cs.launch {
             val prompt = runCatching {
                 val tableSamples = fetchTableSamples(config.llmRelevantTableNames)
-                val template = loadTemplate("chart-sql.txt")
+                val template = loadTemplate("chart-sql.md")
                 createChartPrompt(config, tableSamples, template)
             }.getOrElse { e ->
                 if (e is ControlFlowException || e is CancellationException) throw e
