@@ -4,15 +4,18 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
-import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.ui.SimpleListCellRenderer
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
+import com.lukastomoszek.idea.codemetricsvisualization.PluginIcons
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.ChartConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.ui.ChartConfigurable
-import javax.swing.*
+import javax.swing.JButton
+import javax.swing.JList
+import javax.swing.JPanel
+import javax.swing.JToggleButton
 import javax.swing.event.PopupMenuEvent
 import javax.swing.event.PopupMenuListener
 
@@ -43,8 +46,6 @@ class ChartControlsProvider(
         const val ALL_FEATURES_OPTION = "All Features"
         const val ALL_MAPPING_PATHS_OPTION = "All Paths"
         const val ALL_MAPPING_METHODS_OPTION = "All HTTP Methods"
-        val LOCKED_ICON: Icon = IconLoader.getIcon("/icons/locked.svg", ChartControlsProvider::class.java)
-        val UNLOCKED_ICON: Icon = IconLoader.getIcon("/icons/unlocked.svg", ChartControlsProvider::class.java)
     }
 
     fun createControlsPanel(): JPanel {
@@ -92,7 +93,7 @@ class ChartControlsProvider(
             }
         }
 
-        contextUpdateLockedButton = JToggleButton(UNLOCKED_ICON).apply {
+        contextUpdateLockedButton = JToggleButton(PluginIcons.UNLOCKED).apply {
             toolTipText = "Lock Context Update (Unlock to follow caret)"
             addActionListener {
                 updateIsLockedButtonState(isSelected)
@@ -188,7 +189,7 @@ class ChartControlsProvider(
 
     fun updateIsLockedButtonState(isLocked: Boolean) {
         contextUpdateLockedButton.isSelected = isLocked
-        contextUpdateLockedButton.icon = if (isLocked) LOCKED_ICON else UNLOCKED_ICON
+        contextUpdateLockedButton.icon = if (isLocked) PluginIcons.LOCKED else PluginIcons.UNLOCKED
         contextUpdateLockedButton.toolTipText =
             if (isLocked) "Context Update Locked (Click to Unlock)" else "Context Update Unlocked (Click to Lock)"
     }
