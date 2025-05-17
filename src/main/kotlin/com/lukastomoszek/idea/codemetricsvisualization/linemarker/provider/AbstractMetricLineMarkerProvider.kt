@@ -8,7 +8,6 @@ import com.intellij.openapi.application.readAction
 import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.editor.markup.GutterIconRenderer
-import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
@@ -25,6 +24,7 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.runBlocking
 
 abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
     private val psiElementClass: Class<T>
@@ -49,15 +49,23 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
         val configs = filterEnabledConfigs(LineMarkerSettings.getInstance(project).getEnabledNonEmptyConfigs())
         if (configs.isEmpty()) return
 
-        runBlockingCancellable {
-            elements.asFlow()
-                .filter { psiElementClass.isInstance(it) }
-                .map { it as T }
-                .filter { preFilterElement(it, project) }
-                .map { processElementSafe(project, it, configs) }
-                .toList()
-                .flatten()
-                .let(result::addAll)
+        try {
+            runBlocking {
+                elements.asFlow()
+                    .filter { psiElementClass.isInstance(it) }
+                    .map {
+                        @Suppress("UNCHECKED_CAST")
+                        it as T
+                    }
+                    .filter { preFilterElement(it, project) }
+                    .map { processElementSafe(project, it, configs) }
+                    .toList()
+                    .flatten()
+                    .let(result::addAll)
+            }
+        } catch (e: Exception) {
+            if (e is ControlFlowException || e is CancellationException) throw e
+            thisLogger().warn("Line marker computation failed", e)
         }
     }
 
