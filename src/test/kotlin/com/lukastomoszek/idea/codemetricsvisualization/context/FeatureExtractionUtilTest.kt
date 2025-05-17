@@ -6,15 +6,14 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.FeatureEvaluatorSettings
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.FeatureEvaluatorConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.FeatureParameterType
+import com.lukastomoszek.idea.codemetricsvisualization.util.TEST_DATA_PATH
 import kotlinx.coroutines.runBlocking
 
 private const val TEST_FILE_PATH = "psi/FeatureExtractionTestData.java"
 
 class FeatureExtractionUtilTest : BasePlatformTestCase() {
 
-    override fun getTestDataPath(): String {
-        return "src/test/resources/testdata"
-    }
+    override fun getTestDataPath() = TEST_DATA_PATH
 
     private fun getElementAtMarker(psiFile: PsiFile, marker: String): PsiElement {
         val text = psiFile.text

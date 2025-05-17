@@ -3,15 +3,14 @@ package com.lukastomoszek.idea.codemetricsvisualization.context
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.lukastomoszek.idea.codemetricsvisualization.util.TEST_DATA_PATH
 import kotlinx.coroutines.runBlocking
 
 private const val TEST_FILE_PATH = "psi/PsiUtilsTestData.java"
 
 class PsiUtilsTest : BasePlatformTestCase() {
 
-    override fun getTestDataPath(): String {
-        return "src/test/resources/testdata"
-    }
+    override fun getTestDataPath() = TEST_DATA_PATH
 
     private fun getElementAtMarker(psiFile: PsiFile, marker: String): PsiElement {
         val text = psiFile.text
