@@ -20,7 +20,6 @@ import com.lukastomoszek.idea.codemetricsvisualization.db.model.QueryResult
 import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.dbviewer.service.DbViewerService
 import kotlinx.coroutines.CancellationException
 import java.awt.BorderLayout
-import java.awt.event.ActionListener
 import java.awt.event.ItemEvent
 import javax.swing.JButton
 import javax.swing.JPanel
@@ -48,27 +47,40 @@ class DbViewerPanel(private val project: Project) : SimpleToolWindowPanel(true, 
     }
 
     init {
-        val enterKeyListener = ActionListener { loadTableData() }
-        sqlQueryField.addActionListener(enterKeyListener)
-
-        val controlPanel = createControlPanel().apply {
-            border = JBUI.Borders.emptyBottom(5)
-        }
-
-        setupTableComboBoxListeners()
-
-        val contentPanel = JPanel(BorderLayout()).apply {
-            table.isStriped = true
-            table.emptyText.text = "No data to display or table not loaded"
-
-            add(controlPanel, BorderLayout.NORTH)
-            add(JBScrollPane(table), BorderLayout.CENTER)
-            add(statusLabel, BorderLayout.SOUTH)
-            border = JBUI.Borders.empty(5, 10, 0, 10)
-        }
-
-        setContent(contentPanel)
+        setupListeners()
+        setContent(createContentPanel())
         updateTableList()
+    }
+
+    fun refreshPanelOnShow() = updateTableList()
+
+    private fun setupListeners() {
+        sqlQueryField.addActionListener { loadTableData() }
+
+        tableComboBox.addItemListener { e ->
+            if (e.stateChange == ItemEvent.SELECTED) {
+                (e.item as? String)?.let(::selectTable) ?: run {
+                    tableModel.clearData()
+                    statusLabel.text = "Please select a table."
+                    sqlQueryField.text = ""
+                }
+            }
+        }
+
+        tableComboBox.addPopupMenuListener(object : PopupMenuListener {
+            override fun popupMenuWillBecomeVisible(e: PopupMenuEvent?) = updateTableList()
+            override fun popupMenuWillBecomeInvisible(e: PopupMenuEvent?) {}
+            override fun popupMenuCanceled(e: PopupMenuEvent?) {}
+        })
+    }
+
+    private fun createContentPanel(): JPanel = JPanel(BorderLayout()).apply {
+        table.isStriped = true
+        table.emptyText.text = "No data to display or table not loaded"
+        add(createControlPanel(), BorderLayout.NORTH)
+        add(JBScrollPane(table), BorderLayout.CENTER)
+        add(statusLabel, BorderLayout.SOUTH)
+        border = JBUI.Borders.empty(5, 10, 0, 10)
     }
 
     private fun createControlPanel(): JPanel = panel {
@@ -82,37 +94,37 @@ class DbViewerPanel(private val project: Project) : SimpleToolWindowPanel(true, 
         }
     }
 
-    private fun setupTableComboBoxListeners() {
-        tableComboBox.addItemListener { e ->
-            if (e.stateChange == ItemEvent.SELECTED) {
-                val selectedTable = e.item as? String
-                if (selectedTable != null) {
-                    updateSqlQueryFieldAndLoadData(selectedTable)
-                } else {
-                    tableModel.clearData()
-                    statusLabel.text = "Please select a table."
-                    sqlQueryField.text = ""
+    private fun updateTableList() {
+        val previous = tableComboBox.selectedItem as? String
+        DbViewerService.getInstance(project).getTableNames { result ->
+            result.fold(
+                onSuccess = { names ->
+                    if (tableListModel.items == names && tableListModel.selectedItem == previous) {
+                        if (names.isEmpty()) statusLabel.text = "No tables found in the database."
+                        return@fold
+                    }
+                    tableListModel.removeAll()
+                    tableListModel.add(names)
+                    tableListModel.selectedItem = when {
+                        previous != null && names.contains(previous) -> previous
+                        else -> names.firstOrNull()
+                    }
+                },
+                onFailure = { error ->
+                    if (error is ControlFlowException || error is CancellationException) throw error
+                    setErrorStatus("Error loading table list: ${error.message}")
                 }
-            }
+            )
         }
-
-        tableComboBox.addPopupMenuListener(object : PopupMenuListener {
-            override fun popupMenuWillBecomeVisible(e: PopupMenuEvent?) {
-                updateTableList()
-            }
-
-            override fun popupMenuWillBecomeInvisible(e: PopupMenuEvent?) {}
-            override fun popupMenuCanceled(e: PopupMenuEvent?) {}
-        })
     }
 
-    private fun updateSqlQueryFieldAndLoadData(tableName: String) {
+    private fun selectTable(tableName: String) {
         statusLabel.text = "Fetching columns for '$tableName'..."
         DbViewerService.getInstance(project).getTableColumns(tableName) { result ->
-            val queryTemplate = result.fold(
+            val query = result.fold(
                 onSuccess = { columns ->
-                    val columnString = if (columns.isEmpty()) "*" else columns.joinToString(", ") { "\"$it\"" }
-                    "SELECT $columnString FROM \"$tableName\" LIMIT $ROW_LIMIT"
+                    val cols = if (columns.isEmpty()) "*" else columns.joinToString(", ") { "\"$it\"" }
+                    "SELECT $cols FROM \"$tableName\" LIMIT $ROW_LIMIT"
                 },
                 onFailure = { error ->
                     if (error is ControlFlowException || error is CancellationException) throw error
@@ -121,126 +133,46 @@ class DbViewerPanel(private val project: Project) : SimpleToolWindowPanel(true, 
                     "SELECT * FROM \"$tableName\" LIMIT $ROW_LIMIT"
                 }
             )
-            sqlQueryField.text = queryTemplate
+            sqlQueryField.text = query
             loadTableData()
         }
     }
 
-    fun refreshPanelOnShow() = updateTableList()
-
-    private fun updateTableList() {
-        val previouslySelectedItem = tableComboBox.selectedItem as? String
-        statusLabel.text = "Loading table list..."
-
-        DbViewerService.getInstance(project).getTableNames { result ->
-            result.fold(
-                onSuccess = { tableNames ->
-                    if (tableListModel.items == tableNames && tableListModel.selectedItem == previouslySelectedItem) {
-                        if (tableListModel.isEmpty) {
-                            statusLabel.text = "No tables found in the database."
-                        }
-                        return@fold
-                    }
-
-                    tableListModel.removeAll()
-                    tableListModel.add(tableNames)
-
-                    tableListModel.selectedItem = when {
-                        previouslySelectedItem != null && tableNames.contains(previouslySelectedItem) -> previouslySelectedItem
-                        else -> tableNames.firstOrNull()
-                    }
-
-                    val isTableSelected = tableListModel.selectedItem != null
-
-                    if (!isTableSelected) {
-                        statusLabel.text =
-                            if (tableNames.isEmpty()) "No tables found in the database." else "Select a table."
-                        tableModel.clearData()
-                    } else {
-                        if (tableComboBox.selectedItem == null && tableNames.isNotEmpty()) {
-                            tableComboBox.selectedItem = tableNames.first()
-                        }
-                        if (sqlQueryField.text.isBlank() && tableComboBox.selectedItem != null) {
-                            updateSqlQueryFieldAndLoadData(tableComboBox.selectedItem as String)
-                        } else if (tableComboBox.selectedItem != null) {
-                            statusLabel.text =
-                                "Table '${tableComboBox.selectedItem}' selected. Modify query or execute."
-                        }
-                    }
-                },
-                onFailure = { error ->
-                    if (error is ControlFlowException || error is CancellationException) throw error
-                    statusLabel.text = "Error loading table list: ${error.message}"
-                    tableListModel.removeAll()
-                    tableModel.clearData()
-                }
-            )
-        }
-    }
-
     private fun loadTableData() {
-        val sqlQuery = sqlQueryField.text.trim()
-        val selectedTable = tableComboBox.selectedItem as? String
-
-        if (sqlQuery.isBlank()) {
-            statusLabel.text = "SQL Query cannot be empty."
-            tableModel.clearData()
-            return
-        }
-
-        statusLabel.text = "Executing query for table '${selectedTable ?: "selected source"}'..."
+        val query = sqlQueryField.text.trim()
+        val table = tableComboBox.selectedItem as? String
+        if (query.isBlank()) return setErrorStatus("SQL Query cannot be empty.")
+        statusLabel.text = "Executing query for table '${table ?: "selected source"}'..."
         tableModel.clearData()
-
-        DbViewerService.getInstance(project).queryTableData(sqlQuery) { queryDataResult ->
-            if (selectedTable != null) {
-                DbViewerService.getInstance(project).getTableRowCount(selectedTable) { countResult ->
-                    handleQueryResponse(queryDataResult, countResult.getOrNull(), sqlQuery, selectedTable)
+        DbViewerService.getInstance(project).queryTableData(query) { dataResult ->
+            if (table != null) {
+                DbViewerService.getInstance(project).getTableRowCount(table) {
+                    handleQueryResponse(dataResult, it.getOrNull(), query, table)
                 }
-            } else {
-                handleQueryResponse(queryDataResult, null, sqlQuery, selectedTable)
-            }
+            } else handleQueryResponse(dataResult, null, query, table)
         }
     }
 
-    private fun handleQueryResponse(
-        queryDataResult: Result<QueryResult>,
-        totalCount: Long?,
-        sqlQuery: String,
-        tableName: String?
-    ) {
-        queryDataResult.fold(
-            onSuccess = { queryResult ->
-                val rows = queryResult.rows.map { row ->
-                    queryResult.columnNames.map { row[it] }.toTypedArray()
-                }
-                tableModel.setData(
-                    queryResult.columnNames.toTypedArray(),
-                    queryResult.columnTypes.toTypedArray(),
-                    rows
-                )
-                updateStatusLabelFromResult(queryResult, tableName, totalCount)
+    private fun handleQueryResponse(result: Result<QueryResult>, total: Long?, sql: String, table: String?) {
+        result.fold(
+            onSuccess = {
+                val rows = it.rows.map { row -> it.columnNames.map { row[it] }.toTypedArray() }
+                tableModel.setData(it.columnNames.toTypedArray(), it.columnTypes.toTypedArray(), rows)
+                val ctx = table?.let { "Table '$it'" } ?: "Query result"
+                statusLabel.text = if (total != null) "$ctx: Displaying ${rows.size} out of $total row(s)."
+                else "$ctx: Displaying ${rows.size} row(s)."
             },
-            onFailure = { error ->
-                if (error is ControlFlowException || error is CancellationException) throw error
-                val context = tableName?.let { "for table '$it'" } ?: ""
-                statusLabel.text = "Error querying $context: ${error.message}"
-                tableModel.clearData()
-                thisLogger().warn(
-                    "DB Viewer Error querying $context with SQL: $sqlQuery : ${error.message}",
-                    error
-                )
+            onFailure = {
+                if (it is ControlFlowException || it is CancellationException) throw it
+                setErrorStatus("Error querying ${table ?: ""}: ${it.message}")
+                thisLogger().warn("Query failed: $sql", it)
             }
         )
     }
 
-    private fun updateStatusLabelFromResult(queryResult: QueryResult, tableName: String?, totalCount: Long?) {
-        val displayedRows = queryResult.rows.size
-        val context = tableName?.let { "Table '$it'" } ?: "Query result"
-        statusLabel.text = if (totalCount != null) {
-            "$context: Displaying $displayedRows out of $totalCount row(s)."
-        } else {
-            "$context: Displaying $displayedRows row(s)."
-        }
+    private fun setErrorStatus(text: String, clear: Boolean = true) {
+        statusLabel.text = text
+        if (clear) tableModel.clearData()
     }
 
     companion object {
