@@ -20,7 +20,6 @@ import com.lukastomoszek.idea.codemetricsvisualization.db.ContextAwareQueryBuild
 import com.lukastomoszek.idea.codemetricsvisualization.db.DuckDbService
 import com.lukastomoszek.idea.codemetricsvisualization.db.model.QueryResult
 import com.lukastomoszek.idea.codemetricsvisualization.linemarker.rule.RuleEvaluator
-import com.lukastomoszek.idea.codemetricsvisualization.util.FormattingUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.filter
@@ -126,7 +125,8 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
     ): List<LineMarkerInfo<*>> {
         if (value == null) return emptyList()
         val color = RuleEvaluator.evaluate(value, config.lineMarkerRules) ?: return emptyList()
-        val tooltip = { _: PsiElement? -> "${config.name}: ${FormattingUtils.formatNumber(value)}" }
+        val tooltip =
+            { _: PsiElement? -> "${config.name}: ${if (value % 1 == 0f) "%.0f".format(value) else "%.2f".format(value)}" }
 
         return listOf(
             LineMarkerInfo(anchor, range, ColorIcon(10, color), tooltip, null, GutterIconRenderer.Alignment.LEFT) {
