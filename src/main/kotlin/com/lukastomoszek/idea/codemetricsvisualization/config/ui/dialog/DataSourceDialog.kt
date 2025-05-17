@@ -86,81 +86,85 @@ class DataSourceDialog(
         }
 
         return panel {
-            row("Name:") {
-                nameField = textField()
-                    .bindText(config::name)
-                    .validationOnInput { validateName(it.text) }
-                    .align(AlignX.FILL)
-                    .component
-            }
 
-            row("Table Name:") {
-                textField()
-                    .bindText(config::tableName)
-                    .validationOnInput { if (it.text.isBlank()) error("Table name cannot be empty") else null }
-                    .align(AlignX.FILL)
-                    .component
-            }
-
-            row("File Path:") {
-                cell(filePathField)
-                    .bindText(config::filePath)
-                    .align(AlignX.FILL)
-            }
-
-            row {
-                label("Additional information for LLM:")
-            }
-            row {
-                cell(JBScrollPane(llmAdditionalInfoTextArea))
-                    .align(Align.FILL)
-            }.resizableRow()
-
-
-            buttonsGroup {
-                row("Import Mode:") {
-                    val replaceRadioButton = radioButton("Replace existing table", ImportMode.REPLACE)
+            group("Basic Info") {
+                row("Name:") {
+                    nameField = textField()
+                        .bindText(config::name)
+                        .validationOnInput { validateName(it.text) }
+                        .align(AlignX.FILL)
                         .component
-                    replaceRadioButton.addActionListener {
-                        if (replaceRadioButton.isSelected) {
-                            currentImportMode = ImportMode.REPLACE
+                }
+
+                row("Table Name:") {
+                    textField()
+                        .bindText(config::tableName)
+                        .validationOnInput { if (it.text.isBlank()) error("Table name cannot be empty") else null }
+                        .align(AlignX.FILL)
+                        .component
+                }
+            }
+
+            group("LLM Integration") {
+                row("File Path:") {
+                    cell(filePathField)
+                        .bindText(config::filePath)
+                        .align(AlignX.FILL)
+                }
+
+                row {
+                    label("Additional information for LLM:")
+                }
+                row {
+                    cell(JBScrollPane(llmAdditionalInfoTextArea))
+                        .align(Align.FILL)
+                }.resizableRow()
+
+
+                buttonsGroup {
+                    row("Import Mode:") {
+                        val replaceRadioButton = radioButton("Replace existing table", ImportMode.REPLACE)
+                            .component
+                        replaceRadioButton.addActionListener {
+                            if (replaceRadioButton.isSelected) {
+                                currentImportMode = ImportMode.REPLACE
+                            }
+                        }
+
+                        val appendRadioButton = radioButton("Append to existing table data", ImportMode.APPEND)
+                            .component
+                        appendRadioButton.addActionListener {
+                            if (appendRadioButton.isSelected) {
+                                currentImportMode = ImportMode.APPEND
+                            }
                         }
                     }
+                }.bind(config::importMode)
 
-                    val appendRadioButton = radioButton("Append to existing table data", ImportMode.APPEND)
-                        .component
-                    appendRadioButton.addActionListener {
-                        if (appendRadioButton.isSelected) {
-                            currentImportMode = ImportMode.APPEND
+
+                row {
+                    copyLlmButton = JButton("Copy LLM Prompt for SQL Generation").apply {
+                        addActionListener {
+                            LlmPromptGenerationService.getInstance(project)
+                                .generateDataSourceImportPrompt(getUpdatedConfigFromForm())
                         }
                     }
+                    cell(copyLlmButton)
+                        .align(AlignX.FILL)
+                        .comment(
+                            "Copies a prompt with instructions and a sample of the selected file to your clipboard for use with an AI tool. " +
+                            "Review the content before use, as it may contain private or sensitive data.",
+                            100
+                        )
                 }
-            }.bind(config::importMode)
-
-
-            row {
-                copyLlmButton = JButton("Copy LLM Prompt for SQL Generation").apply {
-                    addActionListener {
-                        LlmPromptGenerationService.getInstance(project)
-                            .generateDataSourceImportPrompt(getUpdatedConfigFromForm())
-                    }
-                }
-                cell(copyLlmButton)
-                    .align(AlignX.FILL)
-                    .comment(
-                        "Copies a prompt with instructions and a sample of the selected file to your clipboard for use with an AI tool. Review the content before use, as it may contain private or sensitive data.",
-                        100
-                    )
             }
 
-            row {
-                label("Import SQL:")
+            group("SQL Template:") {
+                row {
+                    cell(JBScrollPane(sqlTextArea))
+                        .align(Align.FILL)
+                }.resizableRow()
             }
-
-            row {
-                cell(JBScrollPane(sqlTextArea))
-                    .align(Align.FILL)
-            }.resizableRow()
         }
     }
 

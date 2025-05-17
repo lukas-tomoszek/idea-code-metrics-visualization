@@ -43,15 +43,11 @@ class FeatureEvaluatorDialog(
                     .validationOnInput { validateFqn(it.text) }
                     .align(AlignX.FILL).component
             }
-            row("Feature Parameter Index:") {
-                cell(indexSpinner)
-                    .bindIntValue(config::featureParameterIndex)
-            }
 
             buttonsGroup {
-                row("Feature Parameter Type:") {
+                row("Parameter Type:") {
                     val stringRadioButton =
-                        radioButton("String (e.g. FeatureEnum.FEATURE1)", FeatureParameterType.STRING)
+                        radioButton("String (e.g. \"feature1\")", FeatureParameterType.STRING)
                             .component
                     stringRadioButton.addActionListener {
                         if (stringRadioButton.isSelected) {
@@ -60,7 +56,7 @@ class FeatureEvaluatorDialog(
                     }
 
                     val enumConstantRadioButton =
-                        radioButton("Enum constant (e.g. \"feature1\")", FeatureParameterType.ENUM_CONSTANT)
+                        radioButton("Enum constant (e.g. FeatureEnum.FEATURE1)", FeatureParameterType.ENUM_CONSTANT)
                             .component
                     enumConstantRadioButton.addActionListener {
                         if (enumConstantRadioButton.isSelected) {
@@ -69,6 +65,12 @@ class FeatureEvaluatorDialog(
                     }
                 }
             }.bind(config::featureParameterType)
+
+            row("Parameter Index (0-based):") {
+                cell(indexSpinner)
+                    .bindIntValue(config::featureParameterIndex)
+                    .comment("Example: For method \"evaluate_feature(User user, String feature)\" set index to 1")
+            }
         }
     }
 

@@ -82,12 +82,14 @@ class LineMarkerDialog(
         }
 
         return panel {
-            row("Name:") {
-                nameField = textField()
-                    .bindText(config::name)
-                    .validationOnInput { validateName(it.text) }
-                    .align(AlignX.FILL)
-                    .component
+            group("Basic Info") {
+                row("Name:") {
+                    nameField = textField()
+                        .bindText(config::name)
+                        .validationOnInput { validateName(it.text) }
+                        .align(AlignX.FILL)
+                        .component
+                }
             }
 
             group("LLM Integration") {
@@ -115,7 +117,8 @@ class LineMarkerDialog(
                     cell(copyLlmButton)
                         .align(AlignX.FILL)
                         .comment(
-                            "Copies a prompt with instructions and samples of selected tables to your clipboard for use with an AI tool. This prompt will request both SQL and rule configurations. Review the content before use, as it may contain private or sensitive data.",
+                            "Copies a prompt with instructions and samples of selected tables to your clipboard for use with an AI tool. " +
+                            "Review the content before use, as it may contain private or sensitive data.",
                             100
                         )
                 }

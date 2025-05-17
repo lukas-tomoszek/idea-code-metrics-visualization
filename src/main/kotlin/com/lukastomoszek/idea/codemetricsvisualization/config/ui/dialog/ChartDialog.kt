@@ -63,52 +63,56 @@ class ChartDialog(
         }
 
         return panel {
-            row("Name:") {
-                nameField = textField()
-                    .bindText(config::name)
-                    .validationOnInput { validateName(it.text) }
-                    .align(AlignX.FILL)
-                    .component
-            }
-
-            row {
-                label("LLM Description:")
-            }
-            row {
-                cell(JBScrollPane(llmDescriptionTextArea))
-                    .align(Align.FILL)
-            }.resizableRow()
-
-            row("LLM Relevant Tables:") {
-                cell(llmRelevantTableNamesField)
-                    .resizableColumn()
-                    .align(AlignX.FILL)
-                cell(selectTablesButton)
-            }
-
-            row {
-                copyLlmButton = JButton("Copy LLM Prompt for SQL Generation").apply {
-                    addActionListener {
-                        val currentConfig = getUpdatedConfigFromForm()
-                        LlmPromptGenerationService.getInstance(project)
-                            .generateChartSqlPrompt(currentConfig)
-                    }
+            group("Basic Info") {
+                row("Name:") {
+                    nameField = textField()
+                        .bindText(config::name)
+                        .validationOnInput { validateName(it.text) }
+                        .align(AlignX.FILL)
+                        .component
                 }
-                cell(copyLlmButton)
-                    .align(AlignX.FILL)
-                    .comment(
-                        "Copies a prompt with instructions and samples of selected tables to your clipboard for use with an AI tool. Review the content before use, as it may contain private or sensitive data.",
-                        100
-                    )
             }
 
-            row {
-                label("SQL template:")
+            group("LLM Integration") {
+                row {
+                    label("LLM description:")
+                }
+                row {
+                    cell(JBScrollPane(llmDescriptionTextArea))
+                        .align(Align.FILL)
+                }.resizableRow()
+
+                row("LLM Relevant Tables:") {
+                    cell(llmRelevantTableNamesField)
+                        .resizableColumn()
+                        .align(AlignX.FILL)
+                    cell(selectTablesButton)
+                }
+
+                row {
+                    copyLlmButton = JButton("Copy LLM Prompt for SQL Generation").apply {
+                        addActionListener {
+                            val currentConfig = getUpdatedConfigFromForm()
+                            LlmPromptGenerationService.getInstance(project)
+                                .generateChartSqlPrompt(currentConfig)
+                        }
+                    }
+                    cell(copyLlmButton)
+                        .align(AlignX.FILL)
+                        .comment(
+                            "Copies a prompt with instructions and samples of selected tables to your clipboard for use with an AI tool. " +
+                            "Review the content before use, as it may contain private or sensitive data.",
+                            100
+                        )
+                }
             }
-            row {
-                cell(JBScrollPane(sqlTextArea))
-                    .align(Align.FILL)
-            }.resizableRow()
+
+            group("SQL Template:") {
+                row {
+                    cell(JBScrollPane(sqlTextArea))
+                        .align(Align.FILL)
+                }.resizableRow()
+            }
         }
     }
 
