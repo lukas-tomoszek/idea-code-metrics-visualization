@@ -6,7 +6,7 @@ import com.lukastomoszek.idea.codemetricsvisualization.linemarker.rule.RangeRule
 internal object DefaultLineMarkerConfig {
     const val ENABLED = true
     const val NAME = "New Line Marker Config"
-    const val SQL_TEMPLATE = "SELECT COUNT(*) FROM log_entries WHERE method_fqn = '#method_fqn#'"
+    const val SQL_TEMPLATE = "SELECT COUNT(*) FROM logs WHERE method_fqn = '#method_fqn#'"
     val RULES = mutableListOf(
         RangeRule(fromString = "50", toString = "", colorHex = "#FF0000"),
         RangeRule(fromString = "10", toString = "50", colorHex = "#FFFF00"),

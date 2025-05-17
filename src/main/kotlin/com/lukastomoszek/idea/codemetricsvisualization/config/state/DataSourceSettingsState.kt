@@ -12,14 +12,14 @@ enum class ImportMode {
 
 internal object DefaultDataSource {
     const val NAME = "New Data Source"
-    const val TABLE_NAME = "new_table"
+    const val TABLE_NAME = "logs"
     const val FILE_PATH = ""
     val IMPORT_MODE = ImportMode.REPLACE
     const val LLM_ADDITIONAL_INFO = ""
     val SQL: String = """
-CREATE OR REPLACE TABLE $TABLE_NAME AS
-SELECT *
-FROM read_csv('/path/to/your/data.csv', header=true);
+        CREATE OR REPLACE TABLE $TABLE_NAME AS
+        SELECT *
+        FROM read_csv('/path/to/your/data.csv', header=true);
     """.trimIndent()
 }
 

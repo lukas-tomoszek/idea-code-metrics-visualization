@@ -5,9 +5,13 @@ import com.intellij.util.xmlb.annotations.XCollection
 object DefaultChartConfig {
     const val NAME = "New Chart"
     val SQL_TEMPLATE: String = """
-        SELECT 'CategoryA' AS label, 10 AS value
-        UNION ALL SELECT 'CategoryB' AS label, 20 AS value
-        UNION ALL SELECT 'CategoryC' AS label, 15 AS value;
+        SELECT 
+            date_trunc('day', timestamp) AS day, 
+            COUNT(*) AS call_count
+        FROM logs
+        WHERE method_fqn LIKE '#method_fqn#'
+        GROUP BY day
+        ORDER BY day;
     """.trimIndent()
     const val LLM_DESCRIPTION = ""
     val LLM_RELEVANT_TABLE_NAMES: List<String> = emptyList()
