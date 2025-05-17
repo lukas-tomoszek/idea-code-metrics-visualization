@@ -2,6 +2,7 @@ package com.lukastomoszek.idea.codemetricsvisualization.linemarker.provider
 
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProvider
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.diagnostic.ControlFlowException
@@ -9,7 +10,6 @@ import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.util.ui.ColorIcon
@@ -166,8 +166,8 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
         config: LineMarkerConfig,
         errorMessage: String
     ): LineMarkerInfo<*> {
-        val icon = IconLoader.getIcon("/icons/breakpointObsolete.svg", this.javaClass)
-        val tooltip = { _: PsiElement? -> "Error in '${config.name}': $errorMessage" }
+        val icon = AllIcons.General.Error
+        val tooltip = { _: PsiElement? -> errorMessage }
         return LineMarkerInfo(anchor, range, icon, tooltip, null, GutterIconRenderer.Alignment.LEFT) {
             "Line Marker Error (${config.name})"
         }
