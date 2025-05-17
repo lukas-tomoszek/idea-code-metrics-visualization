@@ -156,9 +156,9 @@ class DbViewerPanel(private val project: Project) : SimpleToolWindowPanel(true, 
     private fun handleQueryResponse(result: Result<QueryResult>, total: Long?, sql: String, table: String?) {
         result.fold(
             onSuccess = {
-                val rows = it.rows.map { row -> it.columnNames.map { row[it] }.toTypedArray() }
+                val rows = it.rows.map { row -> it.columnNames.map { col -> row[col] }.toTypedArray() }
                 tableModel.setData(it.columnNames.toTypedArray(), it.columnTypes.toTypedArray(), rows)
-                val ctx = table?.let { "Table '$it'" } ?: "Query result"
+                val ctx = table?.let { tbl -> "Table '$tbl'" } ?: "Query result"
                 statusLabel.text = if (total != null) "$ctx: Displaying ${rows.size} out of $total row(s)."
                 else "$ctx: Displaying ${rows.size} row(s)."
             },
