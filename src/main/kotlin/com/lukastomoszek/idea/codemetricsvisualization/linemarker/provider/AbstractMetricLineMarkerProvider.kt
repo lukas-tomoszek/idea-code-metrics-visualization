@@ -12,7 +12,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
-import com.intellij.util.Function
 import com.intellij.util.ui.ColorIcon
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.LineMarkerSettings
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerConfig
@@ -27,13 +26,12 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
-import javax.swing.Icon
 
 abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
     private val psiElementClass: Class<T>
 ) : LineMarkerProvider {
 
-    abstract fun filterEnabledConfigs(allEnabledConfigs: List<LineMarkerConfig>): List<LineMarkerConfig>
+    abstract fun filterEnabledConfigs(configs: List<LineMarkerConfig>): List<LineMarkerConfig>
     open suspend fun preFilterElement(element: T, project: Project): Boolean = true
     abstract suspend fun getAnchorElement(element: T): PsiElement?
 
@@ -48,146 +46,130 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
             return
         }
 
-        if (elements.isEmpty()) return
-
-        val project = elements.first().project
-        val lineMarkerSettings = LineMarkerSettings.getInstance(project)
-        val allEnabledConfigs = lineMarkerSettings.getEnabledNonEmptyConfigs()
-        val relevantConfigs = filterEnabledConfigs(allEnabledConfigs)
-
-        if (relevantConfigs.isEmpty()) {
-            return
-        }
+        val project = elements.firstOrNull()?.project ?: return
+        val configs = filterEnabledConfigs(LineMarkerSettings.getInstance(project).getEnabledNonEmptyConfigs())
+        if (configs.isEmpty()) return
 
         runBlockingCancellable {
-            val markers = elements.asFlow()
+            elements.asFlow()
                 .filter { psiElementClass.isInstance(it) }
-                .map {
-                    @Suppress("UNCHECKED_CAST")
-                    it as T
-                }
+                .map { it as T }
                 .filter { preFilterElement(it, project) }
-                .map { typedElement ->
-                    try {
-                        processElementSuspending(project, typedElement, relevantConfigs)
-                    } catch (e: Exception) {
-                        if (e is ControlFlowException || e is CancellationException) throw e
-                        val elementDescription = readAction {
-                            if (typedElement.isValid) typedElement.text.take(50) else "invalid element"
-                        }
-                        thisLogger().error("Error processing element for line marker: $elementDescription", e)
-                        emptyList()
-                    }
-                }.toList()
-            result.addAll(markers.flatten())
+                .map { processElementSafe(project, it, configs) }
+                .toList()
+                .flatten()
+                .let(result::addAll)
         }
     }
 
-    private suspend fun processElementSuspending(
+    private suspend fun processElementSafe(
+        project: Project,
+        element: T,
+        configs: List<LineMarkerConfig>
+    ): List<LineMarkerInfo<*>> = try {
+        processElement(project, element, configs)
+    } catch (e: Exception) {
+        if (e is ControlFlowException || e is CancellationException) throw e
+        val desc = readAction { if (element.isValid) element.text.take(50) else "invalid element" }
+        thisLogger().error("Error processing line marker: $desc", e)
+        emptyList()
+    }
+
+    private suspend fun processElement(
         project: Project,
         originalElement: T,
         configs: List<LineMarkerConfig>
     ): List<LineMarkerInfo<*>> {
-        val anchorElement = getAnchorElement(originalElement) ?: return emptyList()
-        val contextInfo = PsiContextResolver.getContextInfoFromPsi(originalElement)
-        val anchorTextRange = readAction {
-            if (anchorElement.isValid) anchorElement.textRange else null
-        } ?: return emptyList()
+        val anchor = getAnchorElement(originalElement) ?: return emptyList()
+        val range = readAction { anchor.takeIf { it.isValid }?.textRange } ?: return emptyList()
+        val context = PsiContextResolver.getContextInfoFromPsi(originalElement)
 
-        val elementMarkers = mutableListOf<LineMarkerInfo<*>>()
-
-        configs.forEach { config ->
+        return configs.flatMap { config ->
             try {
-                val builtQueryResult = ContextAwareQueryBuilder.buildQuery(
-                    config.sqlTemplate,
-                    contextInfo
-                )
-
-                builtQueryResult.fold(
-                    onSuccess = { finalSql ->
-                        val queryResultOutcome = DuckDbService.getInstance(project).executeReadQuery(finalSql)
-                        queryResultOutcome.fold(
-                            onSuccess = { queryResult ->
-                                val metricValue = extractMetricValue(queryResult, finalSql)
-                                val displayColor = RuleEvaluator.evaluate(metricValue, config.lineMarkerRules)
-
-                                if (metricValue != null && displayColor != null) {
-                                    val icon: Icon = ColorIcon(10, displayColor)
-                                    val tooltipText = "${config.name}: ${FormattingUtils.formatNumber(metricValue)}"
-                                    val tooltipProvider = Function { _: PsiElement? -> tooltipText }
-
-                                    val info = LineMarkerInfo(
-                                        anchorElement,
-                                        anchorTextRange,
-                                        icon,
-                                        tooltipProvider,
-                                        null,
-                                        GutterIconRenderer.Alignment.LEFT,
-                                    ) { "Production Code Metric Visualization (${config.name})" }
-                                    elementMarkers.add(info)
-                                }
+                ContextAwareQueryBuilder.buildQuery(config.sqlTemplate, context).fold(
+                    onSuccess = { sql ->
+                        DuckDbService.getInstance(project).executeReadQuery(sql).fold(
+                            onSuccess = { result ->
+                                buildMarkerIfValid(anchor, range, config, extractMetricValue(result, sql))
                             },
-                            onFailure = { error ->
-                                if (error is ControlFlowException || error is CancellationException) throw error
-                                val errorMessage = "DB Error: ${error.message?.take(100)} SQL: ${finalSql.take(100)}"
-                                thisLogger().warn("$errorMessage...", error)
-                                addErrorMarker(anchorElement, anchorTextRange, config, errorMessage, elementMarkers)
+                            onFailure = { e ->
+                                logAndAddErrorMarker(e, sql, anchor, range, config)
                             }
                         )
                     },
                     onFailure = { error ->
-                        if (error is ControlFlowException || error is CancellationException) throw error
-                        val errorMessage = "SQL build failed for '${config.name}': ${error.message?.take(100)}"
-                        thisLogger().trace("$errorMessage...")
-                        addErrorMarker(anchorElement, anchorTextRange, config, errorMessage, elementMarkers)
+                        thisLogger().info("Couldn't build SQL for line marker: ${config.name}", error)
+                        emptyList()
                     }
                 )
             } catch (e: Exception) {
                 if (e is ControlFlowException || e is CancellationException) throw e
-                val originalElementTextForError = readAction { originalElement.text } ?: "invalid element"
-                val errorMessage =
-                    "Error for element '$originalElementTextForError', config '${config.name}': ${e.message?.take(100)}"
-                thisLogger().error("$errorMessage...", e)
-                addErrorMarker(anchorElement, anchorTextRange, config, errorMessage, elementMarkers)
+                val desc =
+                    readAction { if (originalElement.isValid) originalElement.text.take(50) else "invalid element" }
+                logAndAddErrorMarker(
+                    e,
+                    config.sqlTemplate,
+                    anchor,
+                    range,
+                    config,
+                    "Error processing config '${config.name}' for '$desc'"
+                )
             }
-        }
-        return elementMarkers
-    }
-
-    private fun extractMetricValue(queryResult: QueryResult, finalSql: String): Float? {
-        return if (queryResult.rows.isNotEmpty() && queryResult.columnNames.isNotEmpty()) {
-            queryResult.rows.first()[queryResult.columnNames.first()].toString().toFloatOrNull()
-        } else {
-            if (queryResult.rows.isEmpty()) {
-                thisLogger().trace("Query returned no rows for single metric value. SQL: $finalSql")
-            } else {
-                thisLogger().warn("Query returned no columns for single metric value. SQL: $finalSql")
-            }
-            null
         }
     }
 
-    protected suspend fun addErrorMarker(
-        anchorElement: PsiElement?,
-        anchorTextRange: TextRange,
+    private fun buildMarkerIfValid(
+        anchor: PsiElement,
+        range: TextRange,
         config: LineMarkerConfig,
-        errorMessage: String,
-        elementMarkers: MutableList<in LineMarkerInfo<*>>
-    ) {
-        if (anchorElement == null || !readAction { anchorElement.isValid }) return
+        value: Float?
+    ): List<LineMarkerInfo<*>> {
+        if (value == null) return emptyList()
+        val color = RuleEvaluator.evaluate(value, config.lineMarkerRules) ?: return emptyList()
+        val tooltip = { _: PsiElement? -> "${config.name}: ${FormattingUtils.formatNumber(value)}" }
 
-        val errorIcon: Icon = IconLoader.getIcon("/icons/breakpointObsolete.svg", this.javaClass)
-        val tooltipProvider = { _: PsiElement? ->
-            "Error in '${config.name}': $errorMessage"
+        return listOf(
+            LineMarkerInfo(anchor, range, ColorIcon(10, color), tooltip, null, GutterIconRenderer.Alignment.LEFT) {
+                "Production Code Metric Visualization (${config.name})"
+            }
+        )
+    }
+
+    private fun extractMetricValue(result: QueryResult, sql: String): Float? {
+        return result.columnNames.firstOrNull()?.let { col ->
+            result.rows.firstOrNull()?.get(col)?.toString()?.toFloatOrNull()
+        }.also {
+            if (it == null) {
+                val msg = if (result.rows.isEmpty()) "no rows" else "no columns"
+                thisLogger().trace("Query returned $msg. SQL: $sql")
+            }
         }
-        val errorInfo = LineMarkerInfo(
-            anchorElement,
-            anchorTextRange,
-            errorIcon,
-            tooltipProvider,
-            null,
-            GutterIconRenderer.Alignment.LEFT,
-        ) { "Line Marker Error (${config.name})" }
-        elementMarkers.add(errorInfo)
+    }
+
+    private fun logAndAddErrorMarker(
+        error: Throwable,
+        sql: String,
+        anchor: PsiElement,
+        range: TextRange,
+        config: LineMarkerConfig,
+        prefix: String = "Error"
+    ): List<LineMarkerInfo<*>> {
+        if (error is ControlFlowException || error is CancellationException) throw error
+        val msg = "$prefix in '${config.name}': ${error.message?.take(100)} SQL: ${sql.take(100)}"
+        thisLogger().warn(msg, error)
+        return listOf(createErrorMarker(anchor, range, config, msg))
+    }
+
+    private fun createErrorMarker(
+        anchor: PsiElement,
+        range: TextRange,
+        config: LineMarkerConfig,
+        errorMessage: String
+    ): LineMarkerInfo<*> {
+        val icon = IconLoader.getIcon("/icons/breakpointObsolete.svg", this.javaClass)
+        val tooltip = { _: PsiElement? -> "Error in '${config.name}': $errorMessage" }
+        return LineMarkerInfo(anchor, range, icon, tooltip, null, GutterIconRenderer.Alignment.LEFT) {
+            "Line Marker Error (${config.name})"
+        }
     }
 }
