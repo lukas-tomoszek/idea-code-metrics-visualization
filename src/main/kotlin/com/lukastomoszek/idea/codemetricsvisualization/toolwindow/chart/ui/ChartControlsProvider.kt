@@ -61,55 +61,29 @@ class ChartControlsProvider(
                 }
             }
             addItemListener { e ->
-                if (e.stateChange == java.awt.event.ItemEvent.SELECTED) {
-                    onChartConfigSelected()
-                }
+                if (e.stateChange == java.awt.event.ItemEvent.SELECTED) onChartConfigSelected()
             }
             addPopupMenuListener(object : PopupMenuListener {
-                override fun popupMenuWillBecomeVisible(e: PopupMenuEvent?) {
-                    onChartDropdownOpening()
-                }
-
+                override fun popupMenuWillBecomeVisible(e: PopupMenuEvent?) = onChartDropdownOpening()
                 override fun popupMenuWillBecomeInvisible(e: PopupMenuEvent?) {}
                 override fun popupMenuCanceled(e: PopupMenuEvent?) {}
             })
         }
 
-        methodFilterComboBox = ComboBox(methodFilterModel).apply {
-            toolTipText = "Filter by method from current file"
-            addItemListener { e ->
-                if (e.stateChange == java.awt.event.ItemEvent.SELECTED) {
-                    onMethodFilterSelected()
-                }
-            }
-        }
-
-        featureFilterComboBox = ComboBox(featureFilterModel).apply {
-            toolTipText = "Filter by feature from current file"
-            addItemListener { e ->
-                if (e.stateChange == java.awt.event.ItemEvent.SELECTED) {
-                    onFeatureFilterSelected()
-                }
-            }
-        }
-
-        mappingPathFilterComboBox = ComboBox(mappingPathFilterModel).apply {
-            toolTipText = "Filter by mapping path from current context"
-            addItemListener { e ->
-                if (e.stateChange == java.awt.event.ItemEvent.SELECTED) {
-                    onMappingPathFilterSelected()
-                }
-            }
-        }
-
-        mappingMethodFilterComboBox = ComboBox(mappingMethodFilterModel).apply {
-            toolTipText = "Filter by mapping HTTP method from current context"
-            addItemListener { e ->
-                if (e.stateChange == java.awt.event.ItemEvent.SELECTED) {
-                    onMappingMethodFilterSelected()
-                }
-            }
-        }
+        methodFilterComboBox =
+            createFilterComboBox(methodFilterModel, "Filter by method from current file", onMethodFilterSelected)
+        featureFilterComboBox =
+            createFilterComboBox(featureFilterModel, "Filter by feature from current file", onFeatureFilterSelected)
+        mappingPathFilterComboBox = createFilterComboBox(
+            mappingPathFilterModel,
+            "Filter by mapping path from current context",
+            onMappingPathFilterSelected
+        )
+        mappingMethodFilterComboBox = createFilterComboBox(
+            mappingMethodFilterModel,
+            "Filter by mapping HTTP method from current context",
+            onMappingMethodFilterSelected
+        )
 
         openChartSettingsButton = JButton(AllIcons.General.Settings).apply {
             toolTipText = "Open Chart Settings"
@@ -157,17 +131,19 @@ class ChartControlsProvider(
         }
     }
 
-    fun getSelectedChartConfig(): ChartConfig? = chartConfigComboBox.selectedItem as? ChartConfig?
+    fun getSelectedChartConfig(): ChartConfig? = chartConfigComboBox.selectedItem as? ChartConfig
     fun getSelectedMethodFilter(): String? = methodFilterComboBox.selectedItem as? String
     fun getSelectedFeatureFilter(): String? = featureFilterComboBox.selectedItem as? String
     fun getSelectedMappingPathFilter(): String? = mappingPathFilterComboBox.selectedItem as? String
     fun getSelectedMappingMethodFilter(): String? = mappingMethodFilterComboBox.selectedItem as? String
 
-    fun getMethodsFqnsInFile(): List<String> = methodFilterModel.items.filter { it != ALL_METHODS_OPTION }
-    fun getFeatureNamesInFile(): List<String> = featureFilterModel.items.filter { it != ALL_FEATURES_OPTION }
-    fun getMappingPathsInFile(): List<String> = mappingPathFilterModel.items.filter { it != ALL_MAPPING_PATHS_OPTION }
-    fun getMappingMethodsInFile(): List<String> =
-        mappingMethodFilterModel.items.filter { it != ALL_MAPPING_METHODS_OPTION }
+    private fun getFilteredItems(model: CollectionComboBoxModel<String>, exclude: String): List<String> =
+        model.items.filter { it != exclude }
+
+    fun getMethodsFqnsInFile() = getFilteredItems(methodFilterModel, ALL_METHODS_OPTION)
+    fun getFeatureNamesInFile() = getFilteredItems(featureFilterModel, ALL_FEATURES_OPTION)
+    fun getMappingPathsInFile() = getFilteredItems(mappingPathFilterModel, ALL_MAPPING_PATHS_OPTION)
+    fun getMappingMethodsInFile() = getFilteredItems(mappingMethodFilterModel, ALL_MAPPING_METHODS_OPTION)
 
     fun isContextUpdateLocked(): Boolean = contextUpdateLockedButton.isSelected
 
@@ -176,66 +152,39 @@ class ChartControlsProvider(
             chartConfigsModel.removeAll()
             chartConfigsModel.add(configs)
         }
-
         chartConfigComboBox.selectedItem =
             if (chartConfigsModel.items.contains(targetSelection)) targetSelection else chartConfigsModel.items.firstOrNull()
     }
 
-    fun updateMethodFilterModel(targetSelection: String?, methodsInFile: List<String> = emptyList()) {
-        val distinctItems = (listOfNotNull(targetSelection) + methodsInFile).distinct()
-        val withAllOption =
-            (listOf(ALL_METHODS_OPTION) + distinctItems.filterNot { it == ALL_METHODS_OPTION }).distinct()
+    fun updateMethodFilterModel(targetSelection: String?, methodsInFile: List<String> = emptyList()) =
+        updateFilterModel(methodFilterModel, methodFilterComboBox, targetSelection, methodsInFile, ALL_METHODS_OPTION)
 
+    fun updateFeatureFilterModel(targetSelection: String?, featuresInFile: List<String> = emptyList()) =
+        updateFilterModel(
+            featureFilterModel,
+            featureFilterComboBox,
+            targetSelection,
+            featuresInFile,
+            ALL_FEATURES_OPTION
+        )
 
-        if (methodFilterModel.items != withAllOption) {
-            methodFilterModel.removeAll()
-            methodFilterModel.add(withAllOption)
-        }
+    fun updateMappingPathFilterModel(targetSelection: String?, mappingPathsInFile: List<String> = emptyList()) =
+        updateFilterModel(
+            mappingPathFilterModel,
+            mappingPathFilterComboBox,
+            targetSelection,
+            mappingPathsInFile,
+            ALL_MAPPING_PATHS_OPTION
+        )
 
-        methodFilterComboBox.selectedItem =
-            targetSelection?.takeIf { methodFilterModel.items.contains(it) } ?: ALL_METHODS_OPTION
-    }
-
-    fun updateFeatureFilterModel(targetSelection: String?, featuresInFile: List<String> = emptyList()) {
-        val distinctItems = (listOfNotNull(targetSelection) + featuresInFile).distinct()
-        val withAllOption =
-            (listOf(ALL_FEATURES_OPTION) + distinctItems.filterNot { it == ALL_FEATURES_OPTION }).distinct()
-
-
-        if (featureFilterModel.items != withAllOption) {
-            featureFilterModel.removeAll()
-            featureFilterModel.add(withAllOption)
-        }
-
-        featureFilterComboBox.selectedItem =
-            targetSelection?.takeIf { featureFilterModel.items.contains(it) } ?: ALL_FEATURES_OPTION
-    }
-
-    fun updateMappingPathFilterModel(targetSelection: String?, mappingPathsInFile: List<String> = emptyList()) {
-        val distinctItems = (listOfNotNull(targetSelection) + mappingPathsInFile).distinct()
-        val withAllOption =
-            (listOf(ALL_MAPPING_PATHS_OPTION) + distinctItems.filterNot { it == ALL_MAPPING_PATHS_OPTION }).distinct()
-
-        if (mappingPathFilterModel.items != withAllOption) {
-            mappingPathFilterModel.removeAll()
-            mappingPathFilterModel.add(withAllOption)
-        }
-        mappingPathFilterComboBox.selectedItem =
-            targetSelection?.takeIf { mappingPathFilterModel.items.contains(it) } ?: ALL_MAPPING_PATHS_OPTION
-    }
-
-    fun updateMappingMethodFilterModel(targetSelection: String?, mappingMethodsInFile: List<String> = emptyList()) {
-        val distinctItems = (listOfNotNull(targetSelection) + mappingMethodsInFile).distinct()
-        val withAllOption =
-            (listOf(ALL_MAPPING_METHODS_OPTION) + distinctItems.filterNot { it == ALL_MAPPING_METHODS_OPTION }).distinct()
-
-        if (mappingMethodFilterModel.items != withAllOption) {
-            mappingMethodFilterModel.removeAll()
-            mappingMethodFilterModel.add(withAllOption)
-        }
-        mappingMethodFilterComboBox.selectedItem =
-            targetSelection?.takeIf { mappingMethodFilterModel.items.contains(it) } ?: ALL_MAPPING_METHODS_OPTION
-    }
+    fun updateMappingMethodFilterModel(targetSelection: String?, mappingMethodsInFile: List<String> = emptyList()) =
+        updateFilterModel(
+            mappingMethodFilterModel,
+            mappingMethodFilterComboBox,
+            targetSelection,
+            mappingMethodsInFile,
+            ALL_MAPPING_METHODS_OPTION
+        )
 
     fun updateIsLockedButtonState(isLocked: Boolean) {
         contextUpdateLockedButton.isSelected = isLocked
@@ -245,4 +194,29 @@ class ChartControlsProvider(
     }
 
     fun createStatusLabel(): JBLabel = JBLabel("Initializing...", JBLabel.CENTER)
+
+    private fun <T> updateFilterModel(
+        model: CollectionComboBoxModel<T>,
+        comboBox: ComboBox<T>,
+        targetSelection: T?,
+        itemsInContext: List<T>,
+        allOption: T
+    ) {
+        val distinctItems = (listOfNotNull(targetSelection) + itemsInContext).distinct()
+        val withAllOption = listOf(allOption) + distinctItems.filterNot { it == allOption }
+        if (model.items != withAllOption) {
+            model.removeAll()
+            model.add(withAllOption)
+        }
+        comboBox.selectedItem = targetSelection?.takeIf { model.items.contains(it) } ?: allOption
+    }
+
+    private fun <T> createFilterComboBox(
+        model: CollectionComboBoxModel<T>,
+        tooltip: String,
+        onSelect: () -> Unit
+    ): ComboBox<T> = ComboBox(model).apply {
+        toolTipText = tooltip
+        addItemListener { e -> if (e.stateChange == java.awt.event.ItemEvent.SELECTED) onSelect() }
+    }
 }
