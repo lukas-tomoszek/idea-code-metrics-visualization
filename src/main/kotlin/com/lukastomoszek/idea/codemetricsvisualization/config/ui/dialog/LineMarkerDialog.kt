@@ -1,9 +1,7 @@
 package com.lukastomoszek.idea.codemetricsvisualization.config.ui.dialog
 
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.ComboBox
-import com.intellij.ui.EnumComboBoxModel
-import com.intellij.ui.ToolbarDecorator
+import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
@@ -11,15 +9,11 @@ import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
-import com.intellij.ui.table.JBTable
-import com.intellij.util.ui.ColumnInfo
-import com.intellij.util.ui.ListTableModel
 import com.lukastomoszek.idea.codemetricsvisualization.config.service.LlmPromptGenerationService
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.DefaultLineMarkerConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerConfig
-import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerOperator
-import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerRule
-import javax.swing.DefaultCellEditor
+import com.lukastomoszek.idea.codemetricsvisualization.linemarker.rule.RangeRule
+import com.lukastomoszek.idea.codemetricsvisualization.linemarker.rule.RuleEvaluator
 import javax.swing.JButton
 import javax.swing.JComponent
 
@@ -30,8 +24,8 @@ class LineMarkerDialog(
 ) : AbstractNamedDialog<LineMarkerConfig>(project, config, existingLineMarkerNames) {
 
     private lateinit var sqlTextArea: JBTextArea
-    private lateinit var rulesTableModel: ListTableModel<LineMarkerRule>
-    private val rules = config.lineMarkerRules.map { it.copy() }.toMutableList()
+    private lateinit var rulesTextArea: JBTextArea
+    private val rules = config.lineMarkerRules.toMutableList()
     private lateinit var llmDescriptionTextArea: JBTextArea
     private lateinit var llmRelevantTableNamesField: JBTextField
     private lateinit var selectTablesButton: JButton
@@ -52,7 +46,20 @@ class LineMarkerDialog(
             wrapStyleWord = true
         }
 
-        llmDescriptionTextArea = JBTextArea(3, 70).apply {
+        rulesTextArea = JBTextArea(5, 60).apply {
+            text = rules.joinToString("\n") {
+                "${it.fromString};${it.toString};${it.colorHex}"
+            }
+            lineWrap = false
+            toolTipText =
+                "Each rule on a new line: from_exclusive_or_empty;to_inclusive_or_empty;hex_color_or_empty\n" +
+                "Empty means unbounded (i.e., -∞ or +∞) or no color.\n" +
+                "Rules are evaluated top-down; the first match applies.\n\n" +
+                "Examples for percentage:\n;50;#FF0000\n50;75;#FFFF00\n75;;#00FF00\n" +
+                "Examples for error count:\n;0;#00FF00\n0;5;#FFFF00\n5;;#FF0000"
+        }
+
+        llmDescriptionTextArea = JBTextArea(3, 60).apply {
             text = config.llmDescription
             lineWrap = true
             wrapStyleWord = true
@@ -74,61 +81,6 @@ class LineMarkerDialog(
             }
         }
 
-        val operatorColumn = object : ColumnInfo<LineMarkerRule, LineMarkerOperator>("Operator") {
-            override fun valueOf(item: LineMarkerRule): LineMarkerOperator = item.operator
-            override fun setValue(item: LineMarkerRule, value: LineMarkerOperator) {
-                item.operator = value
-            }
-
-            override fun isCellEditable(item: LineMarkerRule) = true
-
-            override fun getEditor(item: LineMarkerRule): DefaultCellEditor {
-                val comboBox = ComboBox(EnumComboBoxModel(LineMarkerOperator::class.java))
-                return DefaultCellEditor(comboBox)
-            }
-        }
-
-        val thresholdColumn = object : ColumnInfo<LineMarkerRule, String>("Threshold (Float)") {
-            override fun valueOf(item: LineMarkerRule): String = item.threshold.toString()
-            override fun setValue(item: LineMarkerRule, value: String) {
-                item.threshold = value.toFloatOrNull() ?: item.threshold
-            }
-
-            override fun isCellEditable(item: LineMarkerRule) = true
-        }
-
-        val colorColumn = object : ColumnInfo<LineMarkerRule, String>("Color (Hex or Blank)") {
-            override fun valueOf(item: LineMarkerRule): String = item.colorHex ?: ""
-            override fun setValue(item: LineMarkerRule, value: String) {
-                val trimmedValue = value.trim()
-                if (trimmedValue.isEmpty()) {
-                    item.colorHex = null
-                } else {
-                    val hexValue = if (trimmedValue.startsWith("#")) trimmedValue else "#$trimmedValue"
-                    if (Regex("^#[0-9a-fA-F]{6}$").matches(hexValue)) {
-                        item.colorHex = hexValue.uppercase()
-                    }
-                }
-            }
-
-            override fun isCellEditable(item: LineMarkerRule) = true
-        }
-
-        rulesTableModel = ListTableModel(arrayOf(operatorColumn, thresholdColumn, colorColumn), rules, 0)
-        val rulesTable = JBTable(rulesTableModel).apply {
-            setShowGrid(true)
-            emptyText.text = "No rules defined"
-
-            val opColumnModel = getColumnModel().getColumn(0)
-            opColumnModel.cellEditor = operatorColumn.getEditor(LineMarkerRule())
-            opColumnModel.cellRenderer = operatorColumn.getRenderer(LineMarkerRule())
-        }
-
-        val rulesToolbar = ToolbarDecorator.createDecorator(rulesTable)
-            .setAddAction { addRule() }
-            .setRemoveAction { removeRule(rulesTable.selectedRow) }
-            .createPanel()
-
         return panel {
             row("Name:") {
                 nameField = textField()
@@ -138,53 +90,104 @@ class LineMarkerDialog(
                     .component
             }
 
-            row {
-                label("LLM Description:")
-            }
-            row {
-                cell(JBScrollPane(llmDescriptionTextArea))
-                    .align(Align.FILL)
-            }.resizableRow()
+            group("LLM Integration") {
+                row("LLM Description:") {}
+                row {
+                    cell(JBScrollPane(llmDescriptionTextArea))
+                        .align(Align.FILL)
+                }.resizableRow()
 
-            row("LLM Relevant Tables:") {
-                cell(llmRelevantTableNamesField)
-                    .resizableColumn()
-                    .align(AlignX.FILL)
-                cell(selectTablesButton)
-            }
-
-            row {
-                copyLlmButton = JButton("Copy LLM Prompt for SQL Generation").apply {
-                    addActionListener {
-                        val currentConfig = getUpdatedConfigFromForm()
-                        LlmPromptGenerationService.getInstance(project)
-                            .generateLineMarkerSqlPrompt(currentConfig)
-                    }
+                row("LLM Relevant Tables:") {
+                    cell(llmRelevantTableNamesField)
+                        .resizableColumn()
+                        .align(AlignX.FILL)
+                    cell(selectTablesButton)
                 }
-                cell(copyLlmButton)
-                    .align(AlignX.FILL)
-                    .comment(
-                        "Copies a prompt with instructions and samples of selected tables to your clipboard for use with an AI tool. Review the content before use, as it may contain private or sensitive data.",
-                        100
-                    )
+
+                row {
+                    copyLlmButton = JButton("Copy LLM Prompt for SQL & Rules").apply {
+                        addActionListener {
+                            val currentConfig = getUpdatedConfigFromForm()
+                            LlmPromptGenerationService.getInstance(project)
+                                .generateLineMarkerSqlPrompt(currentConfig)
+                        }
+                    }
+                    cell(copyLlmButton)
+                        .align(AlignX.FILL)
+                        .comment(
+                            "Copies a prompt with instructions and samples of selected tables to your clipboard for use with an AI tool. This prompt will request both SQL and rule configurations. Review the content before use, as it may contain private or sensitive data.",
+                            100
+                        )
+                }
             }
 
-            row {
-                label("SQL template:")
-            }
-            row {
-                cell(JBScrollPane(sqlTextArea))
-                    .align(Align.FILL)
-            }.resizableRow()
+            group("Line Marker Logic") {
+                row("SQL template:") {}
+                row {
+                    cell(JBScrollPane(sqlTextArea))
+                        .align(Align.FILL)
+                }.resizableRow()
 
-            row {
-                label("Rules:")
-            }
-            row {
-                cell(rulesToolbar).align(Align.FILL)
-            }.resizableRow()
+                row("Coloring Rules (from_exclusive;to_inclusive;color_hex_or_null):") {}
 
+                row {
+                    cell(JBScrollPane(rulesTextArea))
+                        .align(Align.FILL)
+                        .validationOnApply { validateRules() }
+                        .validationRequestor {
+                            rulesTextArea.document.addDocumentListener(object : javax.swing.event.DocumentListener {
+                                override fun insertUpdate(e: javax.swing.event.DocumentEvent?) = it()
+                                override fun removeUpdate(e: javax.swing.event.DocumentEvent?) = it()
+                                override fun changedUpdate(e: javax.swing.event.DocumentEvent?) = it()
+                            })
+                        }
+                }.resizableRow()
+            }
         }
+    }
+
+    fun validateRules(): ValidationInfo? {
+        val ruleLines = rulesTextArea.text.split('\n').filter { it.isNotBlank() }
+        for ((index, line) in ruleLines.withIndex()) {
+            val parts = line.split(';', limit = 3)
+            if (parts.size != 3) {
+                return ValidationInfo(
+                    "Rule on line ${index + 1} is malformed: '$line'. Expected from;to;color format.",
+                    rulesTextArea
+                )
+            }
+            val fromStr = parts[0].trim()
+            val toStr = parts[1].trim()
+            val colorStr = parts[2].trim()
+
+            try {
+                RuleEvaluator.parseBoundaryString(fromStr, true)
+            } catch (e: NumberFormatException) {
+                return ValidationInfo(
+                    "Invalid 'from' value on line ${index + 1}: '$fromStr'. Must be a number or empty.",
+                    rulesTextArea
+                )
+            }
+
+            try {
+                RuleEvaluator.parseBoundaryString(toStr, false)
+            } catch (e: NumberFormatException) {
+                return ValidationInfo(
+                    "Invalid 'to' value on line ${index + 1}: '$fromStr'. Must be a number or empty.",
+                    rulesTextArea
+                )
+            }
+
+            if (colorStr.isNotEmpty()) {
+                if (!Regex("^#([0-9a-fA-F]{6})$").matches(colorStr)) {
+                    return ValidationInfo(
+                        "Invalid color hex on line ${index + 1}: '$colorStr'. Expected #RRGGBB or empty.",
+                        rulesTextArea
+                    )
+                }
+            }
+        }
+        return null
     }
 
     private fun formatTableNamesForDisplay(tableNames: List<String>): String {
@@ -200,23 +203,26 @@ class LineMarkerDialog(
         )
     }
 
-    private fun addRule() {
-        rules.add(LineMarkerRule())
-        rulesTableModel.fireTableDataChanged()
-    }
-
-    private fun removeRule(selectedRow: Int) {
-        if (selectedRow >= 0) {
-            rules.removeAt(selectedRow)
-            rulesTableModel.fireTableDataChanged()
-        }
-    }
-
     override fun doOKAction() {
         config.sqlTemplate = sqlTextArea.text
         config.llmDescription = llmDescriptionTextArea.text
         config.llmRelevantTableNames = currentLlmRelevantTableNames.toList()
-        config.lineMarkerRules = rules
+
+        val parsedRules = mutableListOf<RangeRule>()
+        val ruleLines = rulesTextArea.text.split('\n').filter { it.isNotBlank() }
+        for (line in ruleLines) {
+            val parts = line.split(';', limit = 3)
+            parsedRules.add(
+                RangeRule(
+                    fromString = parts[0].trim(),
+                    toString = parts[1].trim(),
+                    colorHex = parts[2].trim().uppercase()
+                )
+            )
+        }
+        config.lineMarkerRules.clear()
+        config.lineMarkerRules.addAll(parsedRules)
+
         super.doOKAction()
     }
 }

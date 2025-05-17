@@ -1,9 +1,7 @@
-# Generate DuckDB SQL for Line Marker
+# Generate DuckDB SQL for Line Marker AND Coloring Rules
 
-**Task:**
-Generate a DuckDB SQL query suitable for a line marker.
-The query must:
-
+**Task 1: Generate DuckDB SQL for Line Marker**
+The SQL query must:
 1. Return a **single numerical value**.
 2. Use the following placeholders as needed:
    - `#method_fqn#`: Fully qualified name of the method at the marker.
@@ -14,8 +12,9 @@ The query must:
    - `#mapping_method#`: HTTP method string (e.g., `'GET'`).
    - `#mapping_paths_in_file#`: CSV of all mapping paths in the current file.
    - `#mapping_methods_in_file#`: CSV of all mapping methods in the current file.
+3. Refer to the table samples below for available columns and structure.
 
-**Examples:**
+**Examples for SQL:**
 ```sql
 SELECT COUNT(*) FROM my_logs WHERE method_fqn = '#method_fqn#' AND event = 'ERROR';
 
@@ -35,9 +34,38 @@ WHERE method = '#mapping_method#'
   AND REGEXP_MATCHES(path, '^#mapping_path#/?(\?.*)?$');
 ```
 
-3. Refer to the table samples below for available columns and structure.
+**Task 2: Suggest Coloring Rules**
+Based on the metric returned by the SQL query, suggest coloring rules.
+- Format each rule on a new line as: `from_exclusive_or_empty;to_inclusive_or_empty;hex_color_or_empty`
+- The `from_exclusive` value is not included in the range.
+- The `to_inclusive` value is included in the range.
+- Empty value can be used for unbounded sides or no color (effectively makes the marker not appear).
+- Rules are evaluated in order; the first matching rule applies.
 
-**Description from User:**
+**Examples for Coloring Rules:**
+If the metric is a percentage (0-100):
+```
+;50;#FF0000
+50;75;#FFFF00
+75;;#00FF00
+```
+This means:
+- Values `X <= 50` are Red (`-inf < X <= 50`)
+- Values `50 < X <= 75` are Yellow
+- Values `X > 75` are Green (`75 < X <= +inf`)
+
+If the metric is an error count:
+```
+;0;#00FF00
+0;5;#FFFF00
+5;;#FF0000
+```
+This means:
+- Count `X <= 0` (0 errors) is Green
+- Count `0 < X <= 5` (1-5 errors) is Yellow
+- Count `X > 5` (more than 5 errors) is Red (to is empty, implying +inf)
+
+**Description from User for SQL and Rules:**
 {{llmDescription}}
 
 **Available Table Samples (Top 10 rows using `USING SAMPLE 10 ROWS`):**
