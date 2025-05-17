@@ -70,7 +70,7 @@ object ContextAwareQueryBuilder {
         if (sqlTemplate.contains(MAPPING_PATHS_IN_FILE_PLACEHOLDER)) {
             finalSql = finalSql.replace(
                 MAPPING_PATHS_IN_FILE_PLACEHOLDER,
-                formatListToSqlArray(contextInfo.allMappingPathsInFile)
+                formatListToRegexAlternation(contextInfo.allMappingPathsInFile)
             )
         }
 
@@ -90,6 +90,14 @@ object ContextAwareQueryBuilder {
             "NULL"
         } else {
             list.joinToString { "'${it.replace("'", "''")}'" }
+        }
+    }
+
+    private fun formatListToRegexAlternation(list: List<String>?): String {
+        return if (list.isNullOrEmpty()) {
+            "NULL"
+        } else {
+            list.joinToString("|") { it }
         }
     }
 }
