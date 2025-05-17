@@ -126,6 +126,14 @@ class LineMarkerDialog(
                 row {
                     cell(JBScrollPane(sqlTextArea))
                         .align(Align.FILL)
+                        .validationOnApply { validateSqlTemplate() }
+                        .validationRequestor {
+                            sqlTextArea.document.addDocumentListener(object : javax.swing.event.DocumentListener {
+                                override fun insertUpdate(e: javax.swing.event.DocumentEvent?) = it()
+                                override fun removeUpdate(e: javax.swing.event.DocumentEvent?) = it()
+                                override fun changedUpdate(e: javax.swing.event.DocumentEvent?) = it()
+                            })
+                        }
                 }.resizableRow()
 
                 row("Coloring Rules (from_exclusive;to_inclusive;color_hex_or_null):") {}
@@ -145,6 +153,10 @@ class LineMarkerDialog(
             }
         }
     }
+
+    fun validateSqlTemplate() =
+        sqlTextArea.text.takeIf { it.isNotBlank() && '#' !in it }
+            ?.let { ValidationInfo("SQL template must contain a placeholder (e.g., #method_name#).", sqlTextArea) }
 
     fun validateRules(): ValidationInfo? {
         val ruleLines = rulesTextArea.text.split('\n').filter { it.isNotBlank() }
