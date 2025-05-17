@@ -17,6 +17,7 @@ internal object DefaultLineMarkerConfig {
 }
 
 data class LineMarkerConfig(
+    @Suppress("KotlinConstantConditions")
     var enabled: Boolean = DefaultLineMarkerConfig.ENABLED,
     override var name: String = DefaultLineMarkerConfig.NAME,
     var sqlTemplate: String = DefaultLineMarkerConfig.SQL_TEMPLATE,
