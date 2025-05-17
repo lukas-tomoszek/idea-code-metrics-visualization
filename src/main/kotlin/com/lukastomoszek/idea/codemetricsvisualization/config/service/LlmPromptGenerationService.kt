@@ -12,6 +12,7 @@ import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.project.Project
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.ChartConfig
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.DataSourceConfig
+import com.lukastomoszek.idea.codemetricsvisualization.config.state.ImportMode
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.LineMarkerConfig
 import com.lukastomoszek.idea.codemetricsvisualization.db.DuckDbService
 import com.lukastomoszek.idea.codemetricsvisualization.db.model.QueryResult
@@ -31,8 +32,14 @@ class LlmPromptGenerationService(
         cs.launch {
             val prompt = runCatching {
                 val fileSample = withContext(Dispatchers.IO) { resolveFileSample(config.filePath) }
+                val csvFileInfo = generateCsvFileInfo(config.filePath)
+
+                val existingTableSchema = if (config.importMode == ImportMode.APPEND) {
+                    fetchTableSchema(config.tableName)
+                } else ""
+
                 val template = loadTemplate("import-data-source-sql.md")
-                createDataSourcePrompt(config, fileSample, template)
+                createDataSourcePrompt(config, fileSample, csvFileInfo, template, existingTableSchema)
             }.getOrElse { e ->
                 if (e is ControlFlowException || e is CancellationException) throw e
                 val msg = "Failed to generate prompt for '${config.tableName}': ${e.message}"
@@ -100,6 +107,31 @@ class LlmPromptGenerationService(
         }.joinToString("\n\n")
     }
 
+    private suspend fun fetchTableSchema(tableName: String): String {
+        if (tableName.isBlank()) return ""
+        val duckDbService = DuckDbService.getInstance(project)
+        val schemaQuery = "DESCRIBE \"$tableName\";"
+        val result = duckDbService.executeReadQuery(schemaQuery)
+        return result.fold(
+            onSuccess = { queryResult ->
+                if (queryResult.rows.isEmpty()) {
+                    "Could not describe table '$tableName' or it does not exist."
+                } else {
+                    val header = queryResult.columnNames.joinToString(" | ")
+                    val rows = queryResult.rows.joinToString("\n") { row ->
+                        queryResult.columnNames.joinToString(" | ") { colName ->
+                            (row[colName]?.toString() ?: "NULL").take(50)
+                        }
+                    }
+                    "Schema for table '$tableName':\n$header\n$rows"
+                }
+            },
+            onFailure = {
+                "Could not fetch schema for table '$tableName': ${it.message}"
+            }
+        )
+    }
+
     private fun formatTableSample(tableName: String, result: Result<QueryResult>): String {
         return result.fold(
             onSuccess = { queryResult ->
@@ -132,13 +164,37 @@ class LlmPromptGenerationService(
         }
     }
 
-    private fun createDataSourcePrompt(config: DataSourceConfig, fileSample: String, template: String): String {
+    private suspend fun generateCsvFileInfo(filePath: String?): String {
+        if (filePath.isNullOrBlank() || !filePath.endsWith(".csv", ignoreCase = true)) return ""
+        val duckDbService = DuckDbService.getInstance(project)
+        val sniffQuery = "SELECT Prompt FROM sniff_csv('$filePath');"
+        val result = duckDbService.executeReadQuery(sniffQuery)
+        return result.fold(
+            onSuccess = { queryResult ->
+                queryResult.rows.firstOrNull()?.get("Prompt")?.toString()
+                ?: "Could not extract prompt from sniff_csv result."
+            },
+            onFailure = { e ->
+                "Failed to sniff CSV file '$filePath': ${e.message}"
+            }
+        )
+    }
+
+    private fun createDataSourcePrompt(
+        config: DataSourceConfig,
+        fileSample: String,
+        csvFileInfo: String,
+        template: String,
+        existingTableSchema: String
+    ): String {
         return template
             .replace("{{filePath}}", config.filePath)
             .replace("{{tableName}}", config.tableName)
             .replace("{{importMode}}", config.importMode.name.lowercase())
             .replace("{{fileSample}}", fileSample)
             .replace("{{additionalInfo}}", config.llmAdditionalInfo)
+            .replace("{{csvFileInfo}}", csvFileInfo)
+            .replace("{{existingTableSchema}}", existingTableSchema)
     }
 
     private fun createLineMarkerPrompt(config: LineMarkerConfig, tableSamples: String, template: String): String {

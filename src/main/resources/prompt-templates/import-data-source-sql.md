@@ -120,7 +120,19 @@ WHERE t.line <> '';
 **Operation Mode:** `{{importMode}}`  
 **Custom Description from User (optional):** {{additionalInfo}}
 
-Sample Data (5–10 lines):
+## CSV Sniffed Properties acquired using DuckDB sniff_csv (if any)
+
+```sql
+{{csvFileInfo}}
+````
+
+## Existing Table Schema (if any)
+
+```text
+{{existingTableSchema}}
+```
+
+## Sample Data (5–10 lines):
 
 ```text
 {{fileSample}}
