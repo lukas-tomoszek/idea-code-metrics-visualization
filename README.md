@@ -1,8 +1,7 @@
 # Production Code Metrics Visualization
-
-[![Build Status](https://img.shields.io/github/actions/workflow/status/lukas-tomoszek/idea-code-metrics-visualization/Build.yml?branch=main&style=flat-square)](https://github.com/lukas-tomoszek/idea-code-metrics-visualization/actions/workflows/Build.yml)
-[![Version](https://img.shields.io/jetbrains/plugin/v/YOUR_MARKETPLACE_ID.svg?style=flat-square)](https://plugins.jetbrains.com/plugin/YOUR_MARKETPLACE_ID) <!-- TODO: Replace YOUR_MARKETPLACE_ID -->
-[![Downloads](https://img.shields.io/jetbrains/plugin/d/YOUR_MARKETPLACE_ID.svg?style=flat-square)](https://plugins.jetbrains.com/plugin/YOUR_MARKETPLACE_ID) <!-- TODO: Replace YOUR_MARKETPLACE_ID -->
+[![Build Status](https://img.shields.io/github/actions/workflow/status/lukas-tomoszek/idea-code-metrics-visualization/build.yml?branch=main&style=flat-square)](https://github.com/lukas-tomoszek/idea-code-metrics-visualization/actions/workflows/build.yml)
+[![Version](https://img.shields.io/jetbrains/plugin/v/27403.svg?style=flat-square)](https://plugins.jetbrains.com/plugin/27403)
+[![Downloads](https://img.shields.io/jetbrains/plugin/d/27403.svg?style=flat-square)](https://plugins.jetbrains.com/plugin/27403)
 
 ## Table of Contents
 
@@ -45,7 +44,7 @@ See [Detailed Feature Breakdown](#detailed-feature-breakdown) for configuration 
 ## Getting Started
 
 1. **Install the Plugin:**  
-   Install from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/YOUR_MARKETPLACE_ID)  <!-- TODO: Replace YOUR_MARKETPLACE_ID -->
+   Install from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/27403)  
    via `Settings → Plugins → Marketplace`,  
    or [download the ZIP (v1.0.0)](https://github.com/lukas-tomoszek/idea-code-metrics-visualization/releases/download/v1.0.0/idea-code-metrics-visualization-1.0.0.zip) 
    and use `Install Plugin from Disk`.
