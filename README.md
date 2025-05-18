@@ -10,6 +10,7 @@
 - [Key Features](#key-features)
 - [Getting Started](#getting-started)
 - [Detailed Feature Breakdown](#detailed-feature-breakdown)
+- [Placeholders](#placeholders)
 - [Building from Source](#building-from-source)
 - [Technology Stack](#technology-stack)
 - [Acknowledgements](#acknowledgements)
@@ -31,8 +32,8 @@ next to your Java code.
   color rules based on SQL results and code context.
 - **Custom Charts:** Visualize time series or categorical metrics in a dedicated tool window using SQL-based queries and
   filters.
-- **Dynamic Placeholders:** Use context-aware placeholders (e.g., `#method_fqn#`, `#feature_name#`, `#mapping_path#`) in
-  SQL templates to scope results to the current code.
+- **Dynamic Placeholders:** Use context-aware placeholders in SQL templates to scope results to the current code or
+  file.
 - **LLM Prompt Generator:** Copy AI-ready prompts that include table samples and placeholder instructions to generate
   import queries, line markers, or charts.
 - **Integrated DB Viewer:** Browse and query the in-project DuckDB database directly inside IntelliJ IDEA.
@@ -56,10 +57,10 @@ See [Detailed Feature Breakdown](#detailed-feature-breakdown) for configuration 
 5. **(Optional) Configure Feature Evaluators:**
     - Define how to recognize feature flag checks in your code.
 6. **Configure Line Markers:**
-    - Add marker configurations with an SQL template and semicolon-separated color rules (`from;to;colorHex`).
+    - Add marker configurations with an SQL template and color rules.
     - Use placeholders like `#method_fqn#` to scope values dynamically.
 7. **Configure Charts:**
-    - Add SQL-based chart configs for time series or categorical data (e.g. bar charts).
+    - Add SQL-based chart configs for time series or categorical data (e.g., bar charts).
 8. **View Visualizations:**
     - **Line Markers:** Appear inline next to methods, feature calls, or Spring mappings.
     - **Tool Window:** Open the **Code Metrics Visualizations** tab to view configured charts.
@@ -111,10 +112,12 @@ See [Detailed Feature Breakdown](#detailed-feature-breakdown) for configuration 
     - `Name`: Unique name for the marker.
     - `Enabled`: Whether the marker is active. (set in the table, not in the dialog).
     - `SQL Template`: A DuckDB SQL query that must return a **single numerical value**.
+        - See [Placeholders](#placeholders) for dynamic values and behavior.
     - `Rules`: One rule per line in the format `from_exclusive;to_inclusive;color_hex_or_empty`. Rules are evaluated
       top-down; the first match applies.
         - Empty boundaries mean unbounded.
         - Empty color means no marker is shown.
+
         - Example:
           ```
           ;10;#00FF00  
@@ -145,6 +148,7 @@ See [Detailed Feature Breakdown](#detailed-feature-breakdown) for configuration 
     - `SQL Template`: DuckDB SQL query that must return **two columns**:
         - First: X-axis values (string or date/time)
         - Second: Y-axis values (numeric)
+        - See [Placeholders](#placeholders) for dynamic values and behavior.
     - `LLM Description`: Optional natural language description to help generate the SQL.
     - `LLM Relevant Table Names`: Tables to include in the LLM prompt for schema/sample guidance.
 
@@ -178,6 +182,51 @@ See [Detailed Feature Breakdown](#detailed-feature-breakdown) for configuration 
         - Removing the limit on large tables may freeze the UI.
     - Use query results to verify successful imports and debug chart or line marker configurations.
     - The viewer is read-only. To create or modify tables, use a Data Source configuration.
+
+## Placeholders
+
+You can include the following placeholders in your SQL templates for Line Markers and Charts:
+
+### Context Placeholders (Single Entity)
+
+- `#method_fqn#`: Fully qualified method name at caret  
+  _Example:_ `com.example.service.UserService.getUsers`
+
+- `#feature_name#`: Feature flag string at caret (if matched by evaluator)  
+  _Example:_ `new-homepage-feature`
+
+- `#mapping_path#`: Resolved Spring mapping path  
+  _Example:_ `/api/orders/[^/]+/confirm`
+
+- `#mapping_method#`: HTTP method of the Spring mapping  
+  _Example:_ `POST`
+
+### File-Wide Placeholders (Multi-Entity)
+
+- `#method_fqns_in_file#`: Comma-separated list of method FQNs in the current file  
+  _Example:_ `'com.example.Foo.a','com.example.Bar.b'`
+
+- `#feature_names_in_file#`: Comma-separated list of feature names in the current file  
+  _Example:_ `'beta-login','dark-mode-toggle'`
+
+- `#mapping_paths_in_file#`: Regex alternation of all Spring mapping paths in the file  
+  _Example:_ `/users/[^/]+|/orders|/users/[^/]+/file/[^/]+`
+
+- `#mapping_methods_in_file#`: Comma-separated HTTP methods used in mappings in the file  
+  _Example:_ `'GET','PUT','POST'`
+
+### Behavior
+
+- Placeholders must match your use case (e.g., feature markers require `#feature_name#`).
+- **Line Markers** require all placeholders to be resolved from the current caret context. If any are missing, the
+  marker is not shown.
+- **Charts** support fallback values when the user selects **"All ..."** in a filter:
+    - `'%'` is used for `LIKE`-compatible placeholders (e.g., `#method_fqn#`, `#feature_name#`, `#mapping_method#`)
+    - `'.*'` is used for regex-compatible placeholders (e.g., `#mapping_path#`)
+- **File-wide placeholders** are replaced with:
+    - A comma-separated list of quoted values (for use in `IN (...)`)
+    - A regex alternation string (for `REGEXP_MATCHES(...)`)
+    - `NULL` if the corresponding list is empty, to safely support both patterns
 
 ## Building from Source
 
