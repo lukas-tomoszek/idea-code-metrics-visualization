@@ -23,7 +23,7 @@ object SpringMappingExtractionUtil {
     suspend fun extractPathAndMethod(element: PsiElement): Pair<String?, String?> {
         val method = readAction { PsiTreeUtil.getParentOfType(element, PsiMethod::class.java) } ?: return null to null
         val methodAnnotation = element as? PsiAnnotation ?: getMethodAnnotation(method) ?: return null to null
-        if (!isSpringMappingAnnotation(methodAnnotation.qualifiedName)) return null to null
+        if (!isSpringMappingAnnotation(readAction { methodAnnotation.qualifiedName })) return null to null
 
         val classAnnotation = getContainingClassAnnotation(method)
         val classPath = getPath(classAnnotation).orEmpty()
