@@ -44,7 +44,11 @@ See [Detailed Feature Breakdown](#detailed-feature-breakdown) for configuration 
 
 ## Getting Started
 
-1. **Install the Plugin:** From the JetBrains Marketplace. <!-- TODO: Add release .zip -->
+1. **Install the Plugin:**  
+   Install from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/YOUR_MARKETPLACE_ID)  <!-- TODO: Replace YOUR_MARKETPLACE_ID -->
+   via `Settings → Plugins → Marketplace`,  
+   or [download the ZIP (v1.0.0)](https://github.com/lukas-tomoszek/idea-code-metrics-visualization/releases/download/v1.0.0/idea-code-metrics-visualization-1.0.0.zip) 
+   and use `Install Plugin from Disk`.
 2. **Open Settings/Preferences:** Navigate to `Tools -> Production Code Metrics Visualization`.
 3. **Configure Data Sources:**
     - Add a new data source with a name, target table, and import SQL.
@@ -64,6 +68,31 @@ See [Detailed Feature Breakdown](#detailed-feature-breakdown) for configuration 
 8. **View Visualizations:**
     - **Line Markers:** Appear inline next to methods, feature calls, or Spring mappings.
     - **Tool Window:** Open the **Code Metrics Visualizations** tab to view configured charts.
+
+## Demo Project
+
+You can explore the plugin using the companion demo repository:  
+[idea-code-metrics-visualization-demo](https://github.com/lukas-tomoszek/idea-code-metrics-visualization-demo)
+
+This project includes:
+
+- A sample Spring Boot application.
+- Scripts to generate example data (Apache access logs, application activity, user feature assignments).
+- Pre-configured plugin settings for data sources, line markers, and charts.
+
+It is designed to showcase the plugin's capabilities with minimal setup. Follow the usage guide in the demo repo for
+step-by-step instructions.
+
+Example line markers and charts from the demo project:
+
+**Controller Error Rate Line Markers**  
+<img src="docs/images/controller_error_rate_line_markers.png" alt="Controller Error Rate Line Markers" width="600"/>
+
+**P95 Response Time Chart**  
+<img src="docs/images/p95_response_time_chart.png" alt="P95 Response Time Chart" width="600"/>
+
+**Unique Users per Method Chart**  
+<img src="docs/images/unique_users_chart.png" alt="Unique Users per Method Chart" width="600"/>
 
 ## Detailed Feature Breakdown
 
