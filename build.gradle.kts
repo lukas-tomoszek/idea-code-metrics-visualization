@@ -135,6 +135,13 @@ tasks {
     publishPlugin {
         dependsOn(patchChangelog)
     }
+
+    withType<Test> {
+        testLogging {
+            events("passed", "skipped", "failed")
+            showStandardStreams = true
+        }
+    }
 }
 
 intellijPlatformTesting {
