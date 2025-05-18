@@ -25,40 +25,42 @@ The SQL query must:
 csv:
 
 ```sql
-CREATE OR REPLACE TABLE log_entries AS
-SELECT
-    to_timestamp(timestamp)::TIMESTAMP AS timestamp,
+CREATE
+OR REPLACE TABLE log_entries AS
+SELECT to_timestamp(timestamp) ::TIMESTAMP AS timestamp,
     user_id,
     tenant_id,
     qualified_name
-FROM read_csv('C:/logs/log.csv', header=true);
+FROM read_csv('C:/logs/log.csv', header= true);
 ```
 
 ```sql
-CREATE TABLE IF NOT EXISTS log_entries (
-    timestamp TIMESTAMP,
-    user_id BIGINT,
-    tenant_id BIGINT,
-    method_fqn VARCHAR
+CREATE TABLE IF NOT EXISTS log_entries
+(
+    timestamp
+    TIMESTAMP,
+    user_id
+    BIGINT,
+    tenant_id
+    BIGINT,
+    method_fqn
+    VARCHAR
 );
 
 INSERT INTO log_entries
-SELECT
-    strptime(timestamp, '%b %d, %Y @ %H:%M:%S.%f')::TIMESTAMP AS timestamp,
+SELECT strptime(timestamp, '%b %d, %Y @ %H:%M:%S.%f') ::TIMESTAMP AS timestamp,
     "cmap_user-id" AS user_id,
     "cmap_developer-id" AS tenant_id,
     "cmap_message" AS method_fqn
-FROM read_csv('C:/log/sample.csv',
-    header=true,
-    timestampformat=' ');
+FROM read_csv('C:/log/sample.csv', header= true, timestampformat=' ');
 ```
 
 json:
 
 ```sql
-CREATE OR REPLACE TABLE error_log AS
-SELECT
-    json_extract_string(data, '$.timestamp') AS timestamp,
+CREATE
+OR REPLACE TABLE error_log AS
+SELECT json_extract_string(data, '$.timestamp') AS timestamp,
     json_extract_string(data, '$.level') AS level,
     json_extract_string(data, '$.service') AS service,
     json_extract_string(data, '$.env') AS environment,
@@ -77,10 +79,10 @@ FROM read_json('C:/logs/error_log.json') AS data;
 semi-structured text:
 
 ```sql
-CREATE OR REPLACE TABLE apache_log AS
-SELECT
-    split_part(t.line, ' ', 1) AS ip,
-    strptime(split_part(split_part(t.line, '[', 2), ']', 1), '%d/%b/%Y:%H:%M:%S %z')::TIMESTAMPTZ AS timestamp,
+CREATE
+OR REPLACE TABLE apache_log AS
+SELECT split_part(t.line, ' ', 1) AS ip,
+       strptime(split_part(split_part(t.line, '[', 2), ']', 1), '%d/%b/%Y:%H:%M:%S %z') ::TIMESTAMPTZ AS timestamp,
     split_part(split_part(t.line, '"', 2), ' ', 1) AS method,
     split_part(split_part(t.line, '"', 2), ' ', 2) AS path,
     split_part(split_part(t.line, '"', 2), ' ', 3) AS protocol,
@@ -88,29 +90,19 @@ SELECT
     NULLIF(regexp_extract(t.line, ' ([0-9]+) "[^"]*" "[^"]*"$', 1), '')::BIGINT AS bytes,
     regexp_extract(t.line, ' [0-9]+ "([^"]*)" ', 1) AS referer,
     regexp_extract(t.line, '"([^"]*)"$', 1) AS user_agent
-FROM read_csv('C:/logs/apache_log.txt',
-    auto_detect=false,
-    timestampformat=' ',
-    header=false,
-    columns={'line':'VARCHAR'},
-    delim='\n',
-    strict_mode=false
-) AS t
+FROM read_csv('C:/logs/apache_log.txt', auto_detect= false, timestampformat=' ', header= false, columns={'line':'VARCHAR'}, delim='\n', strict_mode= false
+    ) AS t
 WHERE t.line <> '';
 ```
 
 ```sql
-CREATE OR REPLACE TABLE new_table_1 AS
-SELECT
-    strptime(regexp_extract(t.line, '\[(.*?)\]', 1), '%a %b %d %H:%M:%S %Y')::TIMESTAMP AS timestamp,
+CREATE
+OR REPLACE TABLE new_table_1 AS
+SELECT strptime(regexp_extract(t.line, '\[(.*?)\]', 1), '%a %b %d %H:%M:%S %Y') ::TIMESTAMP AS timestamp,
     regexp_extract(t.line, '\] \[(.*?)\]', 1) AS level,
     regexp_extract(t.line, '\] \[.*?\] ([^\[]+)$', 1) AS message
-FROM read_csv('C:/logs/apache_log.log',
-    delim='\n',
-    header=false,
-    columns={'line':'VARCHAR'},
-    strict_mode=false
-) AS t
+FROM read_csv('C:/logs/apache_log.log', delim='\n', header= false, columns={'line':'VARCHAR'}, strict_mode= false
+    ) AS t
 WHERE t.line <> '';
 
 ```
@@ -120,19 +112,22 @@ WHERE t.line <> '';
 **Operation Mode:** `{{importMode}}`  
 **Custom Description from User (optional):** {{additionalInfo}}
 
-## CSV Sniffed Properties acquired using DuckDB sniff_csv (if any)
+## CSV Sniffed Properties acquired using DuckDB sniff_csv (if input file is csv)
+
+- NOTE: Sniffed properties are *only* used for context (e.g., column types) and should not be included in the SQL
+  query, as DuckDB automatically applies them as defaults.
 
 ```sql
 {{csvFileInfo}}
 ````
 
-## Existing Table Schema (if any)
+## Sample of Existing Table (if it exists):
 
 ```text
-{{existingTableSchema}}
+{{existingTableSample}}
 ```
 
-## Sample Data (5–10 lines):
+## Sample Of Input File (5–10 lines):
 
 ```text
 {{fileSample}}

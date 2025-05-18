@@ -152,7 +152,7 @@ class DataSourceDialog(
                     cell(copyLlmButton)
                         .align(AlignX.FILL)
                         .comment(
-                            "Copies a prompt with instructions and a sample of the selected file to your clipboard for use with an AI tool. " +
+                            "Copies a prompt with instructions and a sample of the selected file (and the existing table if in append mode) to your clipboard for use with an AI tool. " +
                             "Review the content before use, as it may contain private or sensitive data.",
                             100
                         )

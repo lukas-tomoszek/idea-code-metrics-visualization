@@ -34,12 +34,12 @@ class LlmPromptGenerationService(
                 val fileSample = withContext(Dispatchers.IO) { resolveFileSample(config.filePath) }
                 val csvFileInfo = generateCsvFileInfo(config.filePath)
 
-                val existingTableSchema = if (config.importMode == ImportMode.APPEND) {
-                    fetchTableSchema(config.tableName)
+                val existingTableSample = if (config.importMode == ImportMode.APPEND) {
+                    fetchTableSamples(listOf(config.tableName))
                 } else ""
 
                 val template = loadTemplate("import-data-source-sql.md")
-                createDataSourcePrompt(config, fileSample, csvFileInfo, template, existingTableSchema)
+                createDataSourcePrompt(config, fileSample, csvFileInfo, template, existingTableSample)
             }.getOrElse { e ->
                 if (e is ControlFlowException || e is CancellationException) throw e
                 val msg = "Failed to generate prompt for '${config.tableName}': ${e.message}"
@@ -107,46 +107,21 @@ class LlmPromptGenerationService(
         }.joinToString("\n\n")
     }
 
-    private suspend fun fetchTableSchema(tableName: String): String {
-        if (tableName.isBlank()) return ""
-        val duckDbService = DuckDbService.getInstance(project)
-        val schemaQuery = "DESCRIBE \"$tableName\";"
-        val result = duckDbService.executeReadQuery(schemaQuery)
-        return result.fold(
-            onSuccess = { queryResult ->
-                if (queryResult.rows.isEmpty()) {
-                    "Could not describe table '$tableName' or it does not exist."
-                } else {
-                    val header = queryResult.columnNames.joinToString(" | ")
-                    val rows = queryResult.rows.joinToString("\n") { row ->
-                        queryResult.columnNames.joinToString(" | ") { colName ->
-                            (row[colName]?.toString() ?: "NULL").take(50)
-                        }
-                    }
-                    "Schema for table '$tableName':\n$header\n$rows"
-                }
-            },
-            onFailure = {
-                "Could not fetch schema for table '$tableName': ${it.message}"
-            }
-        )
-    }
-
     private fun formatTableSample(tableName: String, result: Result<QueryResult>): String {
         return result.fold(
             onSuccess = { queryResult ->
-                if (queryResult.rows.isEmpty()) {
-                    "Table '$tableName' (Sample - 0 rows):\nNo rows in sample or table is empty.\nColumns: ${
-                        queryResult.columnNames.joinToString(", ")
-                    }"
-                } else {
-                    val header = queryResult.columnNames.joinToString(" | ")
-                    val rows = queryResult.rows.take(10).joinToString("\n") { row ->
-                        queryResult.columnNames.joinToString(" | ") { colName ->
-                            (row[colName]?.toString() ?: "NULL").take(30)
-                        }
+                val header = queryResult.columnNames.joinToString(" | ")
+                val types = queryResult.columnTypes.joinToString(" | ")
+                val rows = queryResult.rows.take(10).joinToString("\n") { row ->
+                    queryResult.columnNames.joinToString(" | ") { colName ->
+                        (row[colName]?.toString() ?: "NULL").take(30)
                     }
-                    "Table '$tableName' (Sample - ${queryResult.rows.size} rows):\n$header\n$rows"
+                }
+
+                if (queryResult.rows.isEmpty()) {
+                    "Table '$tableName' (Sample - 0 rows):\nNo rows in sample or table is empty.\nColumns:\n$header\n$types"
+                } else {
+                    "Table '$tableName' (Sample - ${queryResult.rows.size} rows):\n$header\n$types\n$rows"
                 }
             },
             onFailure = { error ->
@@ -185,7 +160,7 @@ class LlmPromptGenerationService(
         fileSample: String,
         csvFileInfo: String,
         template: String,
-        existingTableSchema: String
+        existingTableSample: String
     ): String {
         return template
             .replace("{{filePath}}", config.filePath)
@@ -194,7 +169,7 @@ class LlmPromptGenerationService(
             .replace("{{fileSample}}", fileSample)
             .replace("{{additionalInfo}}", config.llmAdditionalInfo)
             .replace("{{csvFileInfo}}", csvFileInfo)
-            .replace("{{existingTableSchema}}", existingTableSchema)
+            .replace("{{existingTableSample}}", existingTableSample)
     }
 
     private fun createLineMarkerPrompt(config: LineMarkerConfig, tableSamples: String, template: String): String {

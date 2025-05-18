@@ -117,7 +117,7 @@ class LineMarkerDialog(
                     cell(copyLlmButton)
                         .align(AlignX.FILL)
                         .comment(
-                            "Copies a prompt with instructions and samples of selected tables to your clipboard for use with an AI tool. " +
+                            "Copies a prompt with instructions and samples of the selected tables to your clipboard for use with an AI tool. " +
                             "Review the content before use, as it may contain private or sensitive data.",
                             100
                         )
