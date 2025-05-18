@@ -12,8 +12,8 @@ import com.lukastomoszek.idea.codemetricsvisualization.db.ContextAwareQueryBuild
 class FeatureEvaluationLineMarkerProvider :
     AbstractMetricLineMarkerProvider<PsiMethodCallExpression>(PsiMethodCallExpression::class.java) {
 
-    override fun filterEnabledConfigs(allEnabledConfigs: List<LineMarkerConfig>): List<LineMarkerConfig> {
-        return allEnabledConfigs.filter { it.sqlTemplate.contains(ContextAwareQueryBuilder.FEATURE_NAME_PLACEHOLDER) }
+    override fun filterEnabledConfigs(configs: List<LineMarkerConfig>): List<LineMarkerConfig> {
+        return configs.filter { it.sqlTemplate.contains(ContextAwareQueryBuilder.FEATURE_NAME_PLACEHOLDER) }
     }
 
     override suspend fun preFilterElement(element: PsiMethodCallExpression, project: Project): Boolean {

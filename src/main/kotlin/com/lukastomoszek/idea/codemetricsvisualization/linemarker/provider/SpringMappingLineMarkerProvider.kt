@@ -10,8 +10,8 @@ import com.lukastomoszek.idea.codemetricsvisualization.db.ContextAwareQueryBuild
 
 class SpringMappingLineMarkerProvider : AbstractMetricLineMarkerProvider<PsiAnnotation>(PsiAnnotation::class.java) {
 
-    override fun filterEnabledConfigs(allEnabledConfigs: List<LineMarkerConfig>): List<LineMarkerConfig> {
-        return allEnabledConfigs.filter {
+    override fun filterEnabledConfigs(configs: List<LineMarkerConfig>): List<LineMarkerConfig> {
+        return configs.filter {
             (it.sqlTemplate.contains(ContextAwareQueryBuilder.MAPPING_PATH_PLACEHOLDER)
              || it.sqlTemplate.contains(ContextAwareQueryBuilder.MAPPING_METHOD_PLACEHOLDER))
             && !it.sqlTemplate.contains(ContextAwareQueryBuilder.FEATURE_NAME_PLACEHOLDER)
