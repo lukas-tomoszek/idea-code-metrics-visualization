@@ -6,6 +6,7 @@ import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
+import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.*
 import com.lukastomoszek.idea.codemetricsvisualization.config.service.LlmPromptGenerationService
 import com.lukastomoszek.idea.codemetricsvisualization.config.state.DataSourceConfig
@@ -22,6 +23,7 @@ class DataSourceDialog(
     existingDataSourceNames: List<String>
 ) : AbstractNamedDialog<DataSourceConfig>(project, config, existingDataSourceNames) {
 
+    private lateinit var tableName: JBTextField
     private lateinit var filePathField: TextFieldWithBrowseButton
     private lateinit var sqlTextArea: JBTextArea
     private lateinit var llmAdditionalInfoTextArea: JBTextArea
@@ -97,7 +99,7 @@ class DataSourceDialog(
                 }
 
                 row("Table Name:") {
-                    textField()
+                    tableName = textField()
                         .bindText(config::tableName)
                         .validationOnInput { if (it.text.isBlank()) error("Table name cannot be empty") else null }
                         .align(AlignX.FILL)
@@ -175,7 +177,7 @@ class DataSourceDialog(
     private fun getUpdatedConfigFromForm(): DataSourceConfig {
         return config.copy(
             name = nameField.text,
-            tableName = config.tableName,
+            tableName = tableName.text,
             filePath = filePathField.text,
             importMode = currentImportMode,
             llmAdditionalInfo = getLlmAdditionalInfoCleaned(),
