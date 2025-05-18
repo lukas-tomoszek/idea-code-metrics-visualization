@@ -1,35 +1,19 @@
 package com.lukastomoszek.idea.codemetricsvisualization.context
 
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiFile
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import com.lukastomoszek.idea.codemetricsvisualization.util.TEST_DATA_PATH
+import com.lukastomoszek.idea.codemetricsvisualization.testutils.getElementAtMarker
 import kotlinx.coroutines.runBlocking
 
-private const val TEST_FILE_PATH = "psi/PsiUtilsTestData.java"
+private const val TEST_FILE_PATH = "psi/method/PsiUtilsTestData.java"
 
-class PsiUtilsTest : BasePlatformTestCase() {
-
-    override fun getTestDataPath() = TEST_DATA_PATH
-
-    private fun getElementAtMarker(psiFile: PsiFile, marker: String): PsiElement {
-        val text = psiFile.text
-        val offset = text.indexOf(marker)
-        assertTrue("Marker '$marker' not found in file ${psiFile.name}", offset != -1)
-        val elementAtMarker = psiFile.findElementAt(offset)
-        assertNotNull("Element at marker '$marker' should not be null", elementAtMarker)
-        return elementAtMarker!!
-    }
+class PsiUtilsTest : BaseContextPsiTest() {
 
     fun testGetContainingMethodFqnForSimpleMethod() = runBlocking {
-        val element =
-            getElementAtMarker(myFixture.configureByFile(TEST_FILE_PATH), "// SIMPLE_METHOD_MARKER")
+        val element = loadElement(TEST_FILE_PATH, "/* SIMPLE_METHOD_MARKER */")
         assertEquals("com.example.TopLevelClass.simpleMethod", PsiUtils.getContainingMethodFqn(element))
     }
 
     fun testGetContainingMethodFqnForMethodInNestedClass() = runBlocking {
-        val element =
-            getElementAtMarker(myFixture.configureByFile(TEST_FILE_PATH), "// NESTED_CLASS_METHOD_MARKER")
+        val element = loadElement(TEST_FILE_PATH, "/* NESTED_CLASS_METHOD_MARKER */")
         assertEquals(
             "com.example.TopLevelClass.NestedClass.methodInNestedClass",
             PsiUtils.getContainingMethodFqn(element)
@@ -37,27 +21,22 @@ class PsiUtilsTest : BasePlatformTestCase() {
     }
 
     fun testGetContainingMethodFqnForLambdaExpression() = runBlocking {
-        val element = getElementAtMarker(myFixture.configureByFile(TEST_FILE_PATH), "// LAMBDA_MARKER")
+        val element = loadElement(TEST_FILE_PATH, "/* LAMBDA_MARKER */")
         assertEquals("com.example.TopLevelClass.methodWithLambda", PsiUtils.getContainingMethodFqn(element))
     }
 
     fun testGetContainingMethodFqnForStaticMethod() = runBlocking {
-        val element =
-            getElementAtMarker(myFixture.configureByFile(TEST_FILE_PATH), "// STATIC_METHOD_MARKER")
+        val element = loadElement(TEST_FILE_PATH, "/* STATIC_METHOD_MARKER */")
         assertEquals("com.example.TopLevelClass.staticMethod", PsiUtils.getContainingMethodFqn(element))
     }
 
     fun testGetContainingMethodFqnForConstructor() = runBlocking {
-        val element =
-            getElementAtMarker(myFixture.configureByFile(TEST_FILE_PATH), "// CONSTRUCTOR_MARKER")
+        val element = loadElement(TEST_FILE_PATH, "/* CONSTRUCTOR_MARKER */")
         assertEquals("com.example.TopLevelClass.TopLevelClass", PsiUtils.getContainingMethodFqn(element))
     }
 
     fun testGetContainingMethodFqnForMethodInClassWithoutPackage() = runBlocking {
-        val element = getElementAtMarker(
-            myFixture.configureByFile(TEST_FILE_PATH),
-            "// NO_PACKAGE_CLASS_METHOD_MARKER"
-        )
+        val element = loadElement(TEST_FILE_PATH, "/* NO_PACKAGE_CLASS_METHOD_MARKER */")
         assertEquals(
             "com.example.ClassWithoutPackage.methodInClassWithoutPackage",
             PsiUtils.getContainingMethodFqn(element)
@@ -65,13 +44,12 @@ class PsiUtilsTest : BasePlatformTestCase() {
     }
 
     fun testGetContainingMethodFqnForElementAtClassFieldLevel() = runBlocking {
-        val element = getElementAtMarker(myFixture.configureByFile(TEST_FILE_PATH), "// FIELD_MARKER")
+        val element = loadElement(TEST_FILE_PATH, "/* FIELD_MARKER */")
         assertNull(PsiUtils.getContainingMethodFqn(element))
     }
 
     fun testGetContainingMethodFqnForElementAtTopLevelComment() = runBlocking {
-        val element =
-            getElementAtMarker(myFixture.configureByFile(TEST_FILE_PATH), "// TOP_LEVEL_COMMENT_MARKER")
+        val element = loadElement(TEST_FILE_PATH, "/* TOP_LEVEL_COMMENT_MARKER */")
         assertNull(PsiUtils.getContainingMethodFqn(element))
     }
 
@@ -84,12 +62,12 @@ class PsiUtilsTest : BasePlatformTestCase() {
 
     fun testFindPsiElementAtOffset() = runBlocking {
         val psiFile = myFixture.configureByFile(TEST_FILE_PATH)
-        val offset = psiFile.text.indexOf("// SIMPLE_METHOD_MARKER")
+        val offset = psiFile.text.indexOf("/* SIMPLE_METHOD_MARKER */")
         assertTrue(offset != -1)
 
         val element = PsiUtils.findPsiElementAtOffset(psiFile, offset)
         assertNotNull(element)
-        assertTrue(element!!.text.startsWith("// SIMPLE_METHOD_MARKER"))
+        assertTrue(element!!.text.startsWith("/* SIMPLE_METHOD_MARKER */"))
     }
 
     fun testGetContainingMethodFqnReturnsNullIfNoClassOrMethod() = runBlocking {
@@ -106,14 +84,14 @@ class PsiUtilsTest : BasePlatformTestCase() {
                 void test() {
                     Runnable r = new Runnable() {
                         public void run() {
-                            int x = 1; // ANON_MARKER
+                            int x = 1; /* ANON_MARKER */
                         }
                     };
                 }
             }
         """.trimIndent()
         )
-        val element = getElementAtMarker(psiFile, "// ANON_MARKER")
+        val element = psiFile.getElementAtMarker("/* ANON_MARKER */")
         assertEquals("run", PsiUtils.getContainingMethodFqn(element))
     }
 
@@ -123,12 +101,12 @@ class PsiUtilsTest : BasePlatformTestCase() {
             package com.example;
             public class Outer {
                 static class StaticNested {
-                    void inner() { int x = 0; // STATIC_NESTED_MARKER }
+                    void inner() { int x = 0; /* STATIC_NESTED_MARKER */ }
                 }
             }
         """.trimIndent()
         )
-        val element = getElementAtMarker(psiFile, "// STATIC_NESTED_MARKER")
+        val element = psiFile.getElementAtMarker("/* STATIC_NESTED_MARKER */")
         assertEquals("com.example.Outer.StaticNested.inner", PsiUtils.getContainingMethodFqn(element))
     }
 

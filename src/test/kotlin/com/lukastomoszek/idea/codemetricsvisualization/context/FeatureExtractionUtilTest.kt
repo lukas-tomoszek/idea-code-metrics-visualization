@@ -1,233 +1,91 @@
 package com.lukastomoszek.idea.codemetricsvisualization.context
 
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiFile
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.FeatureEvaluatorSettings
-import com.lukastomoszek.idea.codemetricsvisualization.config.state.FeatureEvaluatorConfig
-import com.lukastomoszek.idea.codemetricsvisualization.config.state.FeatureParameterType
-import com.lukastomoszek.idea.codemetricsvisualization.util.TEST_DATA_PATH
+import com.lukastomoszek.idea.codemetricsvisualization.testutils.FeatureEvaluatorTestConfigs.enumEvaluator
+import com.lukastomoszek.idea.codemetricsvisualization.testutils.FeatureEvaluatorTestConfigs.secondParamEnumEvaluator
+import com.lukastomoszek.idea.codemetricsvisualization.testutils.FeatureEvaluatorTestConfigs.secondParamStringEvaluator
+import com.lukastomoszek.idea.codemetricsvisualization.testutils.FeatureEvaluatorTestConfigs.stringEvaluator
+import com.lukastomoszek.idea.codemetricsvisualization.testutils.setupFeatureEvaluatorSettings
 import kotlinx.coroutines.runBlocking
 
-private const val TEST_FILE_PATH = "psi/FeatureExtractionTestData.java"
+private const val TEST_FILE_PATH = "psi/feature/FeatureExtractionTestData.java"
 
-class FeatureExtractionUtilTest : BasePlatformTestCase() {
-
-    override fun getTestDataPath() = TEST_DATA_PATH
-
-    private fun getElementAtMarker(psiFile: PsiFile, marker: String): PsiElement {
-        val text = psiFile.text
-        val index = text.indexOf(marker)
-        assertTrue("Marker '$marker' not found in file ${psiFile.name}", index != -1)
-        val offset = index + marker.length
-        val elementAtMarker = psiFile.findElementAt(offset)
-        assertNotNull("Element at marker '$marker' should not be null", elementAtMarker)
-        return elementAtMarker!!
-    }
-
-    private fun setupFeatureEvaluatorSettings(configs: List<FeatureEvaluatorConfig>) {
-        val settings = FeatureEvaluatorSettings.getInstance(project)
-        settings.update(configs)
-    }
-
-    override fun tearDown() {
-        try {
-            FeatureEvaluatorSettings.getInstance(project).update(emptyList())
-        } finally {
-            super.tearDown()
-        }
-    }
+class FeatureExtractionUtilTest : BaseContextPsiTest() {
 
     fun testGetStringFeatureName() = runBlocking {
-        setupFeatureEvaluatorSettings(
-            listOf(
-                FeatureEvaluatorConfig(
-                    name = "String Evaluator",
-                    evaluatorMethodFqn = "com.example.features.FeatureClient.getBooleanValue",
-                    featureParameterIndex = 0,
-                    featureParameterType = FeatureParameterType.STRING
-                )
-            )
-        )
-        val psiFile = myFixture.configureByFile(TEST_FILE_PATH)
-        val element = getElementAtMarker(psiFile, "client.getBooleanValue(\"feature-A\"")
-        val featureName = FeatureExtractionUtil.getFeatureName(element)
-        assertEquals("feature-A", featureName)
+        setupFeatureEvaluatorSettings(project, listOf(stringEvaluator))
+        val element = loadElement(TEST_FILE_PATH, "/* USAGE_STRING_A_MARKER */")
+        assertEquals("feature-A", FeatureExtractionUtil.getFeatureName(element))
     }
 
     fun testGetStringFeatureNameFromSecondParameter() = runBlocking {
-        setupFeatureEvaluatorSettings(
-            listOf(
-                FeatureEvaluatorConfig(
-                    name = "String Evaluator Second Param",
-                    evaluatorMethodFqn = "com.example.features.FeatureClient.getStringValue",
-                    featureParameterIndex = 1,
-                    featureParameterType = FeatureParameterType.STRING
-                )
-            )
-        )
-        val psiFile = myFixture.configureByFile(TEST_FILE_PATH)
-        val element = getElementAtMarker(psiFile, "client.getStringValue(0, \"feature-C\"")
-        val featureName = FeatureExtractionUtil.getFeatureName(element)
-        assertEquals("feature-C", featureName)
+        setupFeatureEvaluatorSettings(project, listOf(secondParamStringEvaluator))
+        val element = loadElement(TEST_FILE_PATH, "/* USAGE_STRING_C_MARKER */")
+        assertEquals("feature-C", FeatureExtractionUtil.getFeatureName(element))
     }
 
     fun testGetEnumFeatureName() = runBlocking {
-        setupFeatureEvaluatorSettings(
-            listOf(
-                FeatureEvaluatorConfig(
-                    name = "Enum Evaluator",
-                    evaluatorMethodFqn = "com.example.features.FeatureClient.isEnabled",
-                    featureParameterIndex = 0,
-                    featureParameterType = FeatureParameterType.ENUM_CONSTANT
-                )
-            )
-        )
-        val psiFile = myFixture.configureByFile(TEST_FILE_PATH)
-        val element = getElementAtMarker(psiFile, "client.isEnabled(FeatureKey.FEATURE_ONE")
-        val featureName = FeatureExtractionUtil.getFeatureName(element)
-        assertEquals("FEATURE_ONE", featureName)
+        setupFeatureEvaluatorSettings(project, listOf(enumEvaluator))
+        val element = loadElement(TEST_FILE_PATH, "/* USAGE_ENUM_ONE_MARKER */")
+        assertEquals("FEATURE_ONE", FeatureExtractionUtil.getFeatureName(element))
     }
 
     fun testGetEnumFeatureNameFromSecondParameter() = runBlocking {
-        setupFeatureEvaluatorSettings(
-            listOf(
-                FeatureEvaluatorConfig(
-                    name = "Enum Evaluator Second Param",
-                    evaluatorMethodFqn = "com.example.features.FeatureClient.getIntValue",
-                    featureParameterIndex = 1,
-                    featureParameterType = FeatureParameterType.ENUM_CONSTANT
-                )
-            )
-        )
-        val psiFile = myFixture.configureByFile(TEST_FILE_PATH)
-        val element = getElementAtMarker(psiFile, "client.getIntValue(0, FeatureKey.DISABLED_FEATURE")
-        val featureName = FeatureExtractionUtil.getFeatureName(element)
-        assertEquals("DISABLED_FEATURE", featureName)
+        setupFeatureEvaluatorSettings(project, listOf(secondParamEnumEvaluator))
+        val element = loadElement(TEST_FILE_PATH, "/* USAGE_ENUM_DISABLED_MARKER */")
+        assertEquals("DISABLED_FEATURE", FeatureExtractionUtil.getFeatureName(element))
     }
 
     fun testNoFeatureNameWhenNoMatchingConfig() = runBlocking {
-        setupFeatureEvaluatorSettings(emptyList())
-        val psiFile = myFixture.configureByFile(TEST_FILE_PATH)
-        val element = getElementAtMarker(psiFile, "client.getBooleanValue(\"feature-A\"")
-        val featureName = FeatureExtractionUtil.getFeatureName(element)
-        assertNull(featureName)
+        setupFeatureEvaluatorSettings(project, emptyList())
+        val element = loadElement(TEST_FILE_PATH, "/* USAGE_STRING_A_MARKER */")
+        assertNull(FeatureExtractionUtil.getFeatureName(element))
     }
 
     fun testNoFeatureNameWhenConfigFqnMismatch() = runBlocking {
         setupFeatureEvaluatorSettings(
-            listOf(
-                FeatureEvaluatorConfig(
-                    name = "Wrong FQN Config",
-                    evaluatorMethodFqn = "com.example.features.DifferentClient.getBooleanValue",
-                    featureParameterIndex = 0,
-                    featureParameterType = FeatureParameterType.STRING
-                )
-            )
+            project,
+            listOf(stringEvaluator.copy(evaluatorMethodFqn = "com.example.features.DifferentClient.getBooleanValue"))
         )
-        val psiFile = myFixture.configureByFile(TEST_FILE_PATH)
-        val element = getElementAtMarker(psiFile, "client.getBooleanValue(\"feature-A\"")
-        val featureName = FeatureExtractionUtil.getFeatureName(element)
-        assertNull(featureName)
+        val element = loadElement(TEST_FILE_PATH, "/* USAGE_STRING_A_MARKER */")
+        assertNull(FeatureExtractionUtil.getFeatureName(element))
     }
 
     fun testNoFeatureNameWhenIndexOutOfBounds() = runBlocking {
-        setupFeatureEvaluatorSettings(
-            listOf(
-                FeatureEvaluatorConfig(
-                    name = "Index OOB Config",
-                    evaluatorMethodFqn = "com.example.features.FeatureClient.getBooleanValue",
-                    featureParameterIndex = 5,
-                    featureParameterType = FeatureParameterType.STRING
-                )
-            )
-        )
-        val psiFile = myFixture.configureByFile(TEST_FILE_PATH)
-        val element = getElementAtMarker(psiFile, "client.getBooleanValue(\"feature-A\"")
-        val featureName = FeatureExtractionUtil.getFeatureName(element)
-        assertNull(featureName)
+        setupFeatureEvaluatorSettings(project, listOf(stringEvaluator.copy(featureParameterIndex = 5)))
+        val element = loadElement(TEST_FILE_PATH, "/* USAGE_STRING_A_MARKER */")
+        assertNull(FeatureExtractionUtil.getFeatureName(element))
     }
 
     fun testNoFeatureNameWhenStringArgumentIsNotLiteral() = runBlocking {
-        setupFeatureEvaluatorSettings(
-            listOf(
-                FeatureEvaluatorConfig(
-                    name = "String Evaluator",
-                    evaluatorMethodFqn = "com.example.features.FeatureClient.getBooleanValue",
-                    featureParameterIndex = 0,
-                    featureParameterType = FeatureParameterType.STRING
-                )
-            )
-        )
-        val psiFile = myFixture.configureByFile(TEST_FILE_PATH)
-        val element = getElementAtMarker(psiFile, "client.getBooleanValue(System.getenv(\"RUNTIME_KEY\")")
-        val featureName = FeatureExtractionUtil.getFeatureName(element)
-        assertNull(featureName)
+        setupFeatureEvaluatorSettings(project, listOf(stringEvaluator))
+        val element = loadElement(TEST_FILE_PATH, "/* USAGE_STRING_NON_LITERAL_MARKER */")
+        assertNull(FeatureExtractionUtil.getFeatureName(element))
     }
 
     fun testNoFeatureNameWhenEnumArgumentIsNotReference() = runBlocking {
-        setupFeatureEvaluatorSettings(
-            listOf(
-                FeatureEvaluatorConfig(
-                    name = "Enum Evaluator",
-                    evaluatorMethodFqn = "com.example.features.FeatureClient.isEnabled",
-                    featureParameterIndex = 0,
-                    featureParameterType = FeatureParameterType.ENUM_CONSTANT
-                )
-            )
-        )
-        val psiFile = myFixture.configureByFile(TEST_FILE_PATH)
-        val element = getElementAtMarker(psiFile, "client.isEnabled(null")
-        val featureName = FeatureExtractionUtil.getFeatureName(element)
-        assertNull(featureName)
+        setupFeatureEvaluatorSettings(project, listOf(enumEvaluator))
+        val element = loadElement(TEST_FILE_PATH, "/* USAGE_ENUM_NULL_ARG_MARKER */")
+        assertNull(FeatureExtractionUtil.getFeatureName(element))
     }
 
     fun testGetFeatureNameOnMethodDeclarationItself() = runBlocking {
-        setupFeatureEvaluatorSettings(
-            listOf(
-                FeatureEvaluatorConfig(
-                    name = "String Evaluator",
-                    evaluatorMethodFqn = "com.example.features.FeatureClient.getBooleanValue",
-                    featureParameterIndex = 0,
-                    featureParameterType = FeatureParameterType.STRING
-                )
-            )
-        )
-        val psiFile = myFixture.configureByFile(TEST_FILE_PATH)
-        val element = getElementAtMarker(psiFile, "public boolean getBooleanValue(String key")
-        val featureName = FeatureExtractionUtil.getFeatureName(element)
-        assertNull("Should be null when element is the method declaration, not a call", featureName)
+        setupFeatureEvaluatorSettings(project, listOf(stringEvaluator))
+        val element = loadElement(TEST_FILE_PATH, "/* METHOD_DECLARATION_MARKER */")
+        assertNull(FeatureExtractionUtil.getFeatureName(element))
     }
 
     fun testGetFeatureNameFromDifferentUsages() = runBlocking {
-        setupFeatureEvaluatorSettings(
-            listOf(
-                FeatureEvaluatorConfig(
-                    name = "String Evaluator",
-                    evaluatorMethodFqn = "com.example.features.FeatureClient.getBooleanValue",
-                    featureParameterIndex = 0,
-                    featureParameterType = FeatureParameterType.STRING
-                ),
-                FeatureEvaluatorConfig(
-                    name = "Enum Evaluator",
-                    evaluatorMethodFqn = "com.example.features.FeatureClient.isEnabled",
-                    featureParameterIndex = 0,
-                    featureParameterType = FeatureParameterType.ENUM_CONSTANT
-                )
-            )
-        )
-        val psiFile = myFixture.configureByFile(TEST_FILE_PATH)
+        setupFeatureEvaluatorSettings(project, listOf(stringEvaluator, enumEvaluator))
 
-        var element = getElementAtMarker(psiFile, "client.getBooleanValue(\"feature-A\"")
-        assertEquals("feature-A", FeatureExtractionUtil.getFeatureName(element))
+        val elementA = loadElement(TEST_FILE_PATH, "/* USAGE_STRING_A_MARKER */")
+        val elementB = loadElement(TEST_FILE_PATH, "/* USAGE_STRING_B_MARKER */")
+        val elementEnumOne = loadElement(TEST_FILE_PATH, "/* USAGE_ENUM_ONE_MARKER */")
+        val elementEnumAnother = loadElement(TEST_FILE_PATH, "/* USAGE_ENUM_ANOTHER_MARKER */")
 
-        element = getElementAtMarker(psiFile, "client.getBooleanValue(\"feature-B\"")
-        assertEquals("feature-B", FeatureExtractionUtil.getFeatureName(element))
-
-        element = getElementAtMarker(psiFile, "client.isEnabled(FeatureKey.FEATURE_ONE")
-        assertEquals("FEATURE_ONE", FeatureExtractionUtil.getFeatureName(element))
-
-        element = getElementAtMarker(psiFile, "client.isEnabled(FeatureKey.ANOTHER_FEATURE")
-        assertEquals("ANOTHER_FEATURE", FeatureExtractionUtil.getFeatureName(element))
+        assertEquals("feature-A", FeatureExtractionUtil.getFeatureName(elementA))
+        assertEquals("feature-B", FeatureExtractionUtil.getFeatureName(elementB))
+        assertEquals("FEATURE_ONE", FeatureExtractionUtil.getFeatureName(elementEnumOne))
+        assertEquals("ANOTHER_FEATURE", FeatureExtractionUtil.getFeatureName(elementEnumAnother))
     }
+
 }
