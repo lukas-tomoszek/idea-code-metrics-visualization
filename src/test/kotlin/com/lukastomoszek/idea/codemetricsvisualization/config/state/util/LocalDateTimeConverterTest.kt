@@ -1,6 +1,7 @@
 package com.lukastomoszek.idea.codemetricsvisualization.config.state.util
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -19,9 +20,9 @@ class LocalDateTimeConverterTest {
         assertEquals(testDateTime, result)
     }
 
-    @Test(expected = NumberFormatException::class)
-    fun testFromStringThrowsOnInvalidInput() {
-        converter.fromString("not_a_long")
+    @Test
+    fun testFromStringReturnsNullOnInvalidInput() {
+        assertNull(converter.fromString("not_a_long"))
     }
 
     @Test
@@ -35,9 +36,8 @@ class LocalDateTimeConverterTest {
     }
 
     @Test
-    fun testToStringReturnsNullStringForNullInput() {
-        val result = converter.toString(null)
-        assertEquals("null", result)
+    fun testFromStringReturnsNullForLiteralNullString() {
+        assertNull(converter.fromString("null"))
     }
 
     @Test
@@ -46,6 +46,6 @@ class LocalDateTimeConverterTest {
         val stringRepresentation = converter.toString(originalDateTime)
         val restoredDateTime = converter.fromString(stringRepresentation!!)
 
-        assertEquals(originalDateTime.withNano(0), restoredDateTime.withNano(0))
+        assertEquals(originalDateTime.withNano(0), restoredDateTime?.withNano(0))
     }
 }
