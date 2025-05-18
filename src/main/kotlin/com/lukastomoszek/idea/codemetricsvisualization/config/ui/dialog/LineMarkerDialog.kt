@@ -153,7 +153,7 @@ class LineMarkerDialog(
                             })
                         }
                 }.resizableRow()
-            }
+            }.resizableRow()
         }
     }
 

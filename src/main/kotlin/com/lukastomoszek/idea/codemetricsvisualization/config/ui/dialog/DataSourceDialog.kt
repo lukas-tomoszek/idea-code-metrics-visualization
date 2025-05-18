@@ -166,7 +166,7 @@ class DataSourceDialog(
                     cell(JBScrollPane(sqlTextArea))
                         .align(Align.FILL)
                 }.resizableRow()
-            }
+            }.resizableRow()
         }
     }
 

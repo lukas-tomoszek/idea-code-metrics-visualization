@@ -112,7 +112,7 @@ class ChartDialog(
                     cell(JBScrollPane(sqlTextArea))
                         .align(Align.FILL)
                 }.resizableRow()
-            }
+            }.resizableRow()
         }
     }
 
