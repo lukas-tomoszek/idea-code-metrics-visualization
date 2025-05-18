@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+## [1.0.1] - 2025/05/18
+
+### Fixed
+- Made SQL editor area in config dialogs resizable.
+
+### Changed
+- Updated plugin name to "Production Code Metrics Visualization".
+
+### Docs
+- Updated README badges with the correct JetBrains Marketplace plugin ID.
+
 ## [1.0.0] - 2025/05/18
 
 ### Added

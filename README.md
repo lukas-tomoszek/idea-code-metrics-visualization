@@ -46,7 +46,7 @@ See [Detailed Feature Breakdown](#detailed-feature-breakdown) for configuration 
 1. **Install the Plugin:**  
    Install from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/27403)  
    via `Settings → Plugins → Marketplace`,  
-   or [download the ZIP (v1.0.0)](https://github.com/lukas-tomoszek/idea-code-metrics-visualization/releases/download/v1.0.0/idea-code-metrics-visualization-1.0.0.zip) 
+   or [download the ZIP (v1.0.1)](https://github.com/lukas-tomoszek/idea-code-metrics-visualization/releases/download/v1.0.1/idea-code-metrics-visualization-1.0.1.zip) 
    and use `Install Plugin from Disk`.
 2. **Open Settings/Preferences:** Navigate to `Tools -> Production Code Metrics Visualization`.
 3. **Configure Data Sources:**
