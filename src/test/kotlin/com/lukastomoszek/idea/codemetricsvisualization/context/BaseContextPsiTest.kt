@@ -7,6 +7,7 @@ import com.lukastomoszek.idea.codemetricsvisualization.testutils.clearFeatureEva
 import com.lukastomoszek.idea.codemetricsvisualization.testutils.getElementAtMarker
 
 abstract class BaseContextPsiTest : BasePlatformTestCase() {
+    open fun getTestFilePath(): String = ""
     override fun getTestDataPath() = TEST_DATA_PATH
 
     override fun setUp() {
@@ -23,6 +24,10 @@ abstract class BaseContextPsiTest : BasePlatformTestCase() {
     }
 
     protected open fun clearProjectSettings() = clearFeatureEvaluatorSettings(project)
+
+    protected fun loadElement(marker: String): PsiElement {
+        return loadElement(getTestFilePath(), marker)
+    }
 
     protected fun loadElement(filePath: String, marker: String): PsiElement {
         val psiFile = myFixture.configureByFile(filePath)

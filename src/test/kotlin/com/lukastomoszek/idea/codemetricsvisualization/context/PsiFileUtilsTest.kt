@@ -56,7 +56,7 @@ class PsiFileUtilsTest : BaseContextPsiTest() {
     }
 
     fun testGetMethodsAndFeaturesInContainingFile_EmptyClass() = runBlocking {
-        val element = loadElement("psi/file/EmptyClassFileUtils.java", "/* FILE_UTILS_EMPTY_CLASS_MARKER */")
+        val element = loadElement("psi/util/EmptyClass.java", "/* EMPTY_CLASS_MARKER */")
         val (methods, features) = PsiFileUtils.getMethodsAndFeaturesInContainingFile(element)
         assertTrue(methods.isEmpty())
         assertTrue(features.isEmpty())
@@ -80,7 +80,7 @@ class PsiFileUtilsTest : BaseContextPsiTest() {
     }
 
     fun testExtractMappingPathsAndMethods_EmptyClass() = runBlocking {
-        val element = loadElement("psi/file/EmptyClassFileUtils.java", "/* FILE_UTILS_EMPTY_CLASS_MARKER */")
+        val element = loadElement("psi/util/EmptyClass.java", "/* EMPTY_CLASS_MARKER */")
         val (paths, httpMethods) = PsiFileUtils.extractMappingPathsAndMethods(element)
 
         assertTrue(paths.isEmpty())
