@@ -95,7 +95,7 @@ class DuckDbService(private val project: Project) {
                         is SQLException -> "SQL Error executing write query '$sql': ${error.message}"
                         else -> "Unexpected error during write SQL for query '$sql': ${error.message}"
                     }
-                    thisLogger().error(errorMessage, error)
+                    thisLogger().warn(errorMessage, error)
                 }
             }
         }
