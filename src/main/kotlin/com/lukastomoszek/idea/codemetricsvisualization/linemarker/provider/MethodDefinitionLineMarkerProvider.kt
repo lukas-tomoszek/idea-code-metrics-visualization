@@ -10,18 +10,18 @@ import com.lukastomoszek.idea.codemetricsvisualization.db.ContextAwareQueryBuild
 
 class MethodDefinitionLineMarkerProvider : AbstractMetricLineMarkerProvider<PsiIdentifier>(PsiIdentifier::class.java) {
 
-    override suspend fun preFilterElement(element: PsiIdentifier, project: Project): Boolean {
-        return readAction {
-            element.parent is PsiMethod && (element.parent as PsiMethod).nameIdentifier == element
-        }
-    }
-
     override fun filterEnabledConfigs(configs: List<LineMarkerConfig>): List<LineMarkerConfig> {
         return configs.filter {
             it.sqlTemplate.contains(ContextAwareQueryBuilder.METHOD_FQN_PLACEHOLDER)
             && !it.sqlTemplate.contains(ContextAwareQueryBuilder.FEATURE_NAME_PLACEHOLDER)
             && !it.sqlTemplate.contains(ContextAwareQueryBuilder.MAPPING_PATH_PLACEHOLDER)
             && !it.sqlTemplate.contains(ContextAwareQueryBuilder.MAPPING_METHOD_PLACEHOLDER)
+        }
+    }
+
+    override suspend fun preFilterElement(element: PsiIdentifier, project: Project): Boolean {
+        return readAction {
+            element.parent is PsiMethod && (element.parent as PsiMethod).nameIdentifier == element
         }
     }
 
