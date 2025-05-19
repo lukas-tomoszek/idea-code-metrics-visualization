@@ -25,12 +25,10 @@ import com.intellij.openapi.editor.event.EditorFactoryListener
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.project.Project
-import com.lukastomoszek.idea.codemetricsvisualization.context.model.ContextInfo
-import com.lukastomoszek.idea.codemetricsvisualization.toolwindow.chart.service.ChartService
 
 class ChartContextListener(
     private val project: Project,
-    private val onContextUpdated: suspend (ContextInfo) -> Unit
+    private val onContextUpdated: () -> Unit
 ) : Disposable {
 
     fun register() {
@@ -44,8 +42,7 @@ class ChartContextListener(
     }
 
     private val caretListener = object : CaretListener {
-        override fun caretPositionChanged(event: CaretEvent) =
-            ChartService.getInstance(project).scheduleContextUpdate { context -> onContextUpdated(context) }
+        override fun caretPositionChanged(event: CaretEvent) = onContextUpdated()
     }
 
     private val editorFactoryListener = object : EditorFactoryListener {
@@ -63,9 +60,7 @@ class ChartContextListener(
     }
 
     private val fileEditorManagerListener = object : FileEditorManagerListener {
-        override fun selectionChanged(event: FileEditorManagerEvent) {
-            ChartService.getInstance(project).scheduleContextUpdate { context -> onContextUpdated(context) }
-        }
+        override fun selectionChanged(event: FileEditorManagerEvent) = onContextUpdated()
     }
 
     override fun dispose() {

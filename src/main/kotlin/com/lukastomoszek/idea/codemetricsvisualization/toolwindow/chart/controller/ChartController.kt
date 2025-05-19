@@ -34,7 +34,7 @@ class ChartController(
     private val chartViewerPanel: ChartViewerPanel
 ) : Disposable {
 
-    private val chartContextListener = ChartContextListener(project, ::handleContextUpdate)
+    private val chartContextListener = ChartContextListener(project, ::updateFromEditorContext)
 
     internal val controlsProvider: ChartControlsProvider
 
@@ -54,7 +54,7 @@ class ChartController(
             mappingMethodFilterModel,
             onChartConfigSelected = {
                 resetFiltersBasedOnConfig()
-                updateContext()
+                updateFromEditorContext()
             },
             onMethodFilterSelected = { fetchAndDisplayChartData() },
             onFeatureFilterSelected = { fetchAndDisplayChartData() },
@@ -69,7 +69,7 @@ class ChartController(
         chartContextListener.register()
         loadChartConfigurations()
         resetFiltersBasedOnConfig()
-        updateContext()
+        updateFromEditorContext()
     }
 
     fun loadChartConfigurations() {
@@ -123,7 +123,7 @@ class ChartController(
         }
     }
 
-    private fun updateContext() {
+    private fun updateFromEditorContext() {
         ChartService.getInstance(project).scheduleContextUpdate { context -> handleContextUpdate(context) }
     }
 

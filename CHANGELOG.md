@@ -6,6 +6,7 @@
 
 ### Changed
 - Skip anonymous classes when resolving method FQN
+- Decoupled context listener from ChartService scheduling logic
 
 ### Added
 - Apache 2.0 license headers to source and build files
