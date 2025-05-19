@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Added
+- Apache 2.0 license headers to source and build files
+
 ### Fixed
 - Removed `DumbAware` from PanelToolWindowFactory to avoid index access errors
 
