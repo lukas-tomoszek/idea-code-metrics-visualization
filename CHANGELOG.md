@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.0.2] - 2025/05/19
+
 ### Changed
 - Skip anonymous classes when resolving method FQN
 - Decoupled context listener from ChartService scheduling logic
