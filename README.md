@@ -6,8 +6,10 @@
 ## Table of Contents
 
 - [Overview](#overview)
+- [Use cases](#use-cases)
 - [Key Features](#key-features)
 - [Getting Started](#getting-started)
+- [Demo Project](#demo-project)
 - [Detailed Feature Breakdown](#detailed-feature-breakdown)
 - [Placeholders](#placeholders)
 - [Building from Source](#building-from-source)
@@ -22,6 +24,34 @@
 development workflow. It lets you import, query, and visualize data (e.g., method call counts, error rates, performance
 data, feature flag usage) through configurable charts in a dedicated tool window and as insightful line markers right
 next to your Java code.
+
+## Use cases
+
+- **Access Logs:**
+    - Endpoints with high 4xx/5xx error rates
+    - Rising P95 response time
+    - Endpoints used by many / few unique users
+
+- **Event Logs:**
+    - Sudden usage drop or spike
+    - Rarely used methods or features → candidates for removal
+    - One tenant/user generates most of the traffic
+
+- **Feature Flags:**
+    - Adoption rate for feature flag checks
+    - Promote widely used flags to default
+    - Clean up unused flags and code paths
+
+- **Error Logs:**
+    - Methods with disproportionately high error rates (per method or feature flag)
+    - One user/tenant triggers most errors
+    - Increase in error volume over time
+
+- **Performance Metrics:**
+    - Trend of slow responses over time
+    - Compare latency across endpoints or users
+
+Try it out in the [demo project](#demo-project).
 
 ## Key Features
 
@@ -193,7 +223,7 @@ Example line markers and charts from the demo project:
       AI-assisted generation.
 * **Interactivity:**
     - Use dynamic placeholders in your SQL (e.g., `#method_fqn#`, `#feature_name#`, `#mapping_path#`) to make the chart
-      respond to the active file or selection.
+      respond to the active file or current caret position.
     - In the tool window, select a chart and use filters (method, feature, path, HTTP method) to update the chart
       context.
     - Lock/unlock filters to either stay fixed or follow the current **caret position** in the editor.
@@ -223,7 +253,7 @@ You can include the following placeholders in your SQL templates for Line Marker
 - `#feature_name#`: Feature flag string at caret (if matched by evaluator)  
   _Example:_ `new-homepage-feature`
 
-- `#mapping_path#`: Resolved Spring mapping path  
+- `#mapping_path#`: Resolved Spring mapping path regex 
   _Example:_ `/api/orders/[^/]+/confirm`
 
 - `#mapping_method#`: HTTP method of the Spring mapping  
@@ -246,8 +276,8 @@ You can include the following placeholders in your SQL templates for Line Marker
 ### Behavior
 
 - Placeholders must match your use case (e.g., feature markers require `#feature_name#`).
-- **Line Markers** require all placeholders to be resolved from the current caret context. If any are missing, the
-  marker is not shown.
+- **Line Markers** require all placeholders to be resolved from the context. If any are missing, the marker is not shown.
+  (e.g., Line Markers with `#feature_name#` and `#mapping_path#` only appear on feature evaluations inside methods that have a mapping annotation)
 - **Charts** support fallback values when the user selects **"All ..."** in a filter:
     - `'%'` is used for `LIKE`-compatible placeholders (e.g., `#method_fqn#`, `#feature_name#`, `#mapping_method#`)
     - `'.*'` is used for regex-compatible placeholders (e.g., `#mapping_path#`)
