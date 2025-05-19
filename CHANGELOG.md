@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- Removed `DumbAware` from PanelToolWindowFactory to avoid index access errors
+
 ## [1.0.1] - 2025/05/18
 
 ### Fixed
