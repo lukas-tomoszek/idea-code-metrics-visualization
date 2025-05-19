@@ -107,7 +107,7 @@ class PsiUtilsTest : BaseContextPsiTest() {
         """.trimIndent()
         )
         val element = psiFile.getElementAtMarker("/* ANON_MARKER */")
-        assertEquals("run", PsiUtils.getContainingMethodFqn(element))
+        assertEquals("com.example.AnonClass.test", PsiUtils.getContainingMethodFqn(element))
     }
 
     fun testGetContainingMethodFqnStaticNestedClass() = runBlocking {

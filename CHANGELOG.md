@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Changed
+- Skip anonymous classes when resolving method FQN
+
 ### Added
 - Apache 2.0 license headers to source and build files
 
