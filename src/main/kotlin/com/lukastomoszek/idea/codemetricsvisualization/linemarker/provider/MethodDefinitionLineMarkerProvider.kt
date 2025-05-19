@@ -18,6 +18,7 @@ package com.lukastomoszek.idea.codemetricsvisualization.linemarker.provider
 
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiAnonymousClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiIdentifier
 import com.intellij.psi.PsiMethod
@@ -37,7 +38,10 @@ class MethodDefinitionLineMarkerProvider : AbstractMetricLineMarkerProvider<PsiI
 
     override suspend fun preFilterElement(element: PsiIdentifier, project: Project): Boolean {
         return readAction {
-            element.parent is PsiMethod && (element.parent as PsiMethod).nameIdentifier == element
+            (element.parent as? PsiMethod)
+                ?.takeIf { it.nameIdentifier == element }
+                ?.containingClass
+                ?.let { it !is PsiAnonymousClass } ?: false
         }
     }
 
