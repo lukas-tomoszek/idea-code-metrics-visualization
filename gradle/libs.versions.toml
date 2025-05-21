@@ -2,7 +2,7 @@
 # libraries
 junit = "4.13.2"
 opentest4j = "1.3.0"
-duckdbJdbc = "1.2.2.0"
+duckdbJdbc = "1.3.0.0"
 xchart = "3.8.8"
 
 # plugins
