@@ -23,8 +23,6 @@ import com.intellij.openapi.project.Project
 import com.lukastomoszek.idea.codemetricsvisualization.db.model.QueryResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.sql.Connection
@@ -40,7 +38,6 @@ class DuckDbService(private val project: Project) {
         get() = File(project.basePath, ".idea/codeMetricsVisualizations/data.db")
 
     private var driverLoaded = false
-    private val writeMutex = Mutex()
 
     init {
         loadDriver()
@@ -94,25 +91,23 @@ class DuckDbService(private val project: Project) {
             return Result.failure(IllegalArgumentException("Write SQL command cannot be blank."))
         }
 
-        return writeMutex.withLock {
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    getConnection(readOnly = false).use { conn ->
-                        conn.createStatement().use { statement ->
-                            thisLogger().info("Executing write SQL: $sql")
-                            statement.execute(sql)
-                        }
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                getConnection(readOnly = false).use { conn ->
+                    conn.createStatement().use { statement ->
+                        thisLogger().info("Executing write SQL: $sql")
+                        statement.execute(sql)
                     }
-                    thisLogger().info("Successfully executed write SQL.")
-                    QueryCacheService.getInstance(project).clear()
-                }.onFailure { error ->
-                    if (error is ControlFlowException || error is CancellationException) throw error
-                    val errorMessage = when (error) {
-                        is SQLException -> "SQL Error executing write query '$sql': ${error.message}"
-                        else -> "Unexpected error during write SQL for query '$sql': ${error.message}"
-                    }
-                    thisLogger().warn(errorMessage, error)
                 }
+                thisLogger().info("Successfully executed write SQL.")
+                QueryCacheService.getInstance(project).clear()
+            }.onFailure { error ->
+                if (error is ControlFlowException || error is CancellationException) throw error
+                val errorMessage = when (error) {
+                    is SQLException -> "SQL Error executing write query '$sql': ${error.message}"
+                    else -> "Unexpected error during write SQL for query '$sql': ${error.message}"
+                }
+                thisLogger().warn(errorMessage, error)
             }
         }
     }
@@ -125,12 +120,6 @@ class DuckDbService(private val project: Project) {
 
         QueryCacheService.getInstance(project).get(sql)?.let {
             return it
-        }
-
-        if (writeMutex.isLocked) {
-            val errorMessage = "Database is currently busy with a write operation."
-            thisLogger().debug("$errorMessage SQL: $sql")
-            return Result.failure(SQLException(errorMessage))
         }
 
         return withContext(Dispatchers.IO) {
