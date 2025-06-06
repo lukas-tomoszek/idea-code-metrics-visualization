@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Fixed
+- Ensure UI callbacks in `DataSourceService` are executed on the Event Dispatch Thread (EDT).
+
+
 ## [1.0.2] - 2025/05/19
 
 ### Changed

@@ -57,7 +57,9 @@ class DataSourceService(private val project: Project, private val cs: CoroutineS
             result.onSuccess {
                 config.updateLastImportedTimestamp()
                 showNotification("Import for '${config.name}' executed successfully.", NotificationType.INFORMATION)
-                refreshCallback()
+                withContext(Dispatchers.EDT) {
+                    refreshCallback()
+                }
             }.onFailure { error ->
                 if (error is ControlFlowException || error is CancellationException) throw error
                 val msg = when (error) {
@@ -90,7 +92,9 @@ class DataSourceService(private val project: Project, private val cs: CoroutineS
 
             result.onSuccess {
                 showNotification("Table '$tableName' dropped successfully.", NotificationType.INFORMATION)
-                callback()
+                withContext(Dispatchers.EDT) {
+                    callback()
+                }
             }.onFailure { error ->
                 if (error is ControlFlowException || error is CancellationException) throw error
                 val msg = "Error dropping table '$tableName': ${error.message}"
