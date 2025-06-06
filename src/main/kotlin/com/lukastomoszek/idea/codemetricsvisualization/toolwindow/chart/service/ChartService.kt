@@ -20,6 +20,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.lukastomoszek.idea.codemetricsvisualization.config.persistence.ChartSettings
@@ -44,7 +45,7 @@ class ChartService(
         updateJob?.cancel()
         updateJob = cs.launch {
             delay(300)
-            if (project.isDisposed) return@launch
+            if (project.isDisposed || DumbService.isDumb(project)) return@launch
 
             val editor = readAction {
                 FileEditorManager.getInstance(project).selectedTextEditor

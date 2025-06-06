@@ -24,6 +24,7 @@ import com.intellij.openapi.application.readAction
 import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.editor.markup.GutterIconRenderer
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
@@ -62,6 +63,9 @@ abstract class AbstractMetricLineMarkerProvider<T : PsiElement>(
         }
 
         val project = elements.firstOrNull()?.project ?: return
+        if (DumbService.isDumb(project)) {
+            return
+        }
         val configs = filterEnabledConfigs(LineMarkerSettings.getInstance(project).getEnabledNonEmptyConfigs())
         if (configs.isEmpty()) return
 

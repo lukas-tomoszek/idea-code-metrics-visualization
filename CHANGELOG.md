@@ -6,6 +6,7 @@
 
 ### Fixed
 - Ensure UI callbacks in `DataSourceService` are executed on the Event Dispatch Thread (EDT).
+- Prevent `IndexNotReadyException` by adding dumb mode checks for line markers and chart context updates.
 
 
 ## [1.0.2] - 2025/05/19
