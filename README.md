@@ -51,7 +51,7 @@ next to your Java code.
     - Trend of slow responses over time
     - Compare latency across endpoints or users
 
-Try it out in the [demo project](#demo-project).
+Try it out in the [demo project](https://github.com/lukas-tomoszek/idea-code-metrics-visualization-demo).
 
 ## Key Features
 
