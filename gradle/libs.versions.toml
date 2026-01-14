@@ -6,7 +6,7 @@ duckdbJdbc = "1.2.2.0"
 xchart = "3.8.8"
 
 # plugins
-changelog = "2.2.1"
+changelog = "2.4.0"
 intelliJPlatform = "2.6.0"
 kotlin = "2.1.21"
 kover = "0.9.1"
